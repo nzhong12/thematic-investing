@@ -1,7 +1,11 @@
 """Example usage of PGI Theme Graphs pipeline."""
 
 import sys
-sys.path.insert(0, '/home/runner/work/thematic-investing/thematic-investing/src')
+from pathlib import Path
+
+# Add src directory to path (for running without installation)
+src_path = Path(__file__).parent
+sys.path.insert(0, str(src_path))
 
 from pgi_theme_graphs.pipeline import ThemeGraphPipeline
 

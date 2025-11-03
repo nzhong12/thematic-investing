@@ -58,9 +58,6 @@ class RollingCorrelation:
         Returns:
             DataFrame with MultiIndex (date, ticker1, ticker2) and correlation values.
         """
-        # Rolling window correlation
-        rolling_obj = self.returns_df.rolling(window=window, min_periods=min_periods)
-        
         # Store correlation matrices for each date
         corr_data = []
         
