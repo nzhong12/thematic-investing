@@ -38,7 +38,7 @@ class RollingCorrelation:
             else:
                 min_obs = min_periods
 
-            # Compute rolling correlation for each window
+            # compute rolling correlation for each window
             rolling_corr = self._compute_single_window(window, min_obs)
             self.correlation_matrices[window] = rolling_corr
 
