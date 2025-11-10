@@ -11,32 +11,15 @@ This project uses WRDS CRSP data to construct and visualize market theme cluster
 - Community detection algorithms
 - Interactive visualizations
 
-## Features
+## Quick Start
 
-### Data Acquisition
-- Pull daily S&P 500 returns from WRDS CRSP database using SQL
-- Efficient queries with date range filtering
-- Support for custom stock universes
+### Prerequisites
 
-### Correlation Analysis
-- Compute rolling correlation matrices for multiple time windows
-- Convert correlations to distance metrics (angular, euclidean)
-- Handle missing data and edge cases
+1. **Python 3.8+** installed on your system
+2. **WRDS account** with CRSP database access (make an account)
+3. **WRDS credentials** configured (see [Configuration](#configuration) below)
 
-### Graph Construction
-- Build complete weighted graphs from distance matrices
-- Construct minimum spanning trees using Kruskal's algorithm
-- Detect market theme communities (Louvain, Girvan-Newman)
-- Calculate centrality measures (betweenness, closeness, degree)
-
-### Visualization
-- Correlation heatmaps
-- Network graph layouts (spring, circular, Kamada-Kawai)
-- MST visualizations with community coloring
-- Theme evolution timelines
-- Centrality distributions
-
-## Installation
+### Installation
 
 ```bash
 # Clone the repository
@@ -47,158 +30,148 @@ cd thematic-investing
 pip install -r requirements.txt
 ```
 
+### Configuration
+
+Set up your WRDS credentials (OPTIONAL or just enter every time it prompts)
+
+```bash
+# Option 1: Environment variable (optional or enter manually)
+export WRDS_USERNAME='your_wrds_username'
+
+# Option 2: Create .pgpass file (one-time setup)
+# Run this command and enter your WRDS password when prompted:
+python -c "import wrds; wrds.Connection()"
+```
+
+## How to Run
+
+### 🚀 Method 1: Complete Workflow (Recommended for First Time)
+
+Run the full analysis pipeline to compute correlations and visualize MST:
+
+```bash
+# Step 1: Download data and compute rolling correlations
+# works rn
+python sp500_rolling_correlation.py
+
+# Step 2: Visualize the Minimum Spanning Tree (doesn't work yet)
+python show_mst_only.py
+```
+
+**What happens:**
+1. `sp500_rolling_correlation.py`:
+   - Downloads S&P 500 stock data from WRDS CRSP (default: 20 stocks, 2024 data)
+   - Computes rolling correlations for 10-, 30-, and 50-day windows
+   - Saves results to `correlation_data.pkl`
+   - Displays interactive correlation heatmaps and statistics
+
+2. `show_mst_only.py`:
+   - Loads pre-computed correlation data from `correlation_data.pkl`
+   - Builds Minimum Spanning Tree (MST) from correlation network
+   - Visualizes MST with interactive graph layout
+   - Edge thickness shows correlation strength
+
+### Key Files Explained
+
+| File | Purpose | When to Use |
+|------|---------|-------------|
+| **sp500_rolling_correlation.py** | Downloads S&P 500 data from WRDS and computes rolling correlations for multiple time windows | **Run first** - generates `correlation_data.pkl` |
+| **show_mst_only.py** | Loads pre-computed correlation data and visualizes the MST graph | **Run second** - quick visualization of MST |
+| **run_analysis_with_mst.py** | Complete analysis including data download, correlation computation, MST construction, and statistics | Run for full analysis with printed metrics |
+| **mst_demo.py** | Simple demonstration with sample data | Run for quick demo without WRDS connection |
+| **src/example_usage.py** | Example of using the pipeline API programmatically | Use as template for custom analysis |
+
+## Examples
+
+### Example 1: Basic Workflow
+
+```bash
+# Step 1: Download data and compute correlations
+$ python sp500_rolling_correlation.py
+
+================================================================================
+ROLLING CORRELATION ANALYSIS - 10 LARGE S&P STOCKS
+================================================================================
+Connecting to WRDS...
+✓ Querying S&P 500 constituents...
+✓ Found 503 S&P 500 stocks
+
+✓ Selecting 20 largest stocks by market cap...
+Selected stocks: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', ...]
+
+✓ Querying daily prices from CRSP...
+✓ Downloaded 252 trading days of data
+
+STEP 2: Computing Rolling Correlations
+✓ Computing 10-day rolling correlation...
+✓ Computing 30-day rolling correlation...
+✓ Computing 50-day rolling correlation...
+
+STEP 3: Interactive Visualization
+✓ Showing correlation matrix for 30-day window...
+[Interactive heatmap appears]
+
+✓ Saved to correlation_data.pkl
+✓ Data exported - other scripts can now use 'rolling_corrs' and 'tickers'
+```
+
+```bash
+# Step 2: Visualize MST
+$ python show_mst_only.py
+
+Loading correlation data...
+✓ Loaded rolling_corrs with 3 windows: [10, 30, 50]
+✓ Loaded 20 tickers
+
+Latest date in data: 2024-12-31
+Building MST for 30-day window...
+✓ MST built successfully - 19 edges connecting 20 nodes
+✓ Showing MST visualization...
+[Interactive MST graph appears]
+
+✓ Done
+```
+
+### Example 2: Possible Tweaks
+
+Edit parameters in `sp500_rolling_correlation.py`:
+
+```python
+start_date = "2023-01-01"  # Change date range
+end_date = "2024-12-31"    
+num_stocks = 50            # Change number of stocks (affects n×n correlation matrix)
+```
+
+Then run:
+```bash
+python sp500_rolling_correlation.py
+python show_mst_only.py
+```
+
+## TODO IMPORTANT
+
+- **Add 10-year historical data**: Update `sp500_rolling_correlation.py` to pull most recent 10 years of S&P 500 data from WRDS instead of just 2024
+
+**Output Interpretation:**
+- **Heatmaps**: Red/blue = positive/negative correlation; arrow keys navigate windows
+- **MST**: Thicker edges = stronger correlation; clusters = market themes/sectors
+
 ## Requirements
 
-- Python 3.8+
-- WRDS account with CRSP access
-- See `requirements.txt` for package dependencies
-
-## Usage
-
-### Basic Example
-
-```python
-from src.pgi_theme_graphs.pipeline import ThemeGraphPipeline
-
-# Initialize pipeline
-pipeline = ThemeGraphPipeline(
-    wrds_username='your_username',  # Or use environment variable
-    windows=[10, 30, 50]
-)
-
-# Load S&P 500 returns
-pipeline.load_data(
-    start_date='2022-01-01',
-    end_date='2022-12-31'
-)
-
-# Compute rolling correlations
-pipeline.compute_correlations()
-
-# Analyze theme evolution
-results = pipeline.analyze_evolution(
-    window=30,
-    sample_freq='W',  # Weekly sampling
-    distance_method='angular',
-    community_method='louvain'
-)
-
-# Generate visualizations
-pipeline.visualize_results(
-    results=results,
-    output_dir='./output/theme_graphs'
-)
-```
-
-### Command Line
-
-```bash
-# Run example analysis
-python src/example_usage.py
-```
-
-## Project Structure
-
-```
-thematic-investing/
-├── src/
-│   └── pgi_theme_graphs/
-│       ├── __init__.py
-│       ├── data_loader.py      # WRDS CRSP data interface
-│       ├── correlation.py      # Rolling correlation computation
-│       ├── graph_builder.py    # Graph construction & MST
-│       ├── visualization.py    # Plotting functions
-│       └── pipeline.py         # End-to-end workflow
-├── docs/
-│   ├── architecture.md         # System architecture overview
-│   └── backtesting_plan.md     # Future backtesting implementation
-├── tests/                      # Unit tests (to be added)
-├── requirements.txt            # Python dependencies
-├── .gitignore
-└── README.md
-```
-
-## Methodology
-
-### 1. Data Collection
-Query daily returns for S&P 500 constituents from CRSP database:
-```sql
-SELECT a.date, a.permno, b.ticker, a.ret
-FROM crsp.dsf as a
-LEFT JOIN crsp.dsenames as b ON a.permno = b.permno
-WHERE a.date BETWEEN 'start' AND 'end'
-```
-
-### 2. Correlation Computation
-For each rolling window W (10, 30, 50 days):
-- Compute Pearson correlation matrix ρ
-- Convert to distance: d = sqrt(2 * (1 - ρ))
-
-### 3. Graph Construction
-- Build complete graph with distance-weighted edges
-- Extract minimum spanning tree (MST)
-- Apply community detection to identify market themes
-
-### 4. Analysis
-- Track community evolution over time
-- Identify central stocks (high betweenness/closeness)
-- Visualize theme clusters and transitions
-
-## Configuration
-
-### WRDS Credentials
-Set environment variable:
-```bash
-export WRDS_USERNAME='your_username'
-```
-
-Or pass directly to pipeline:
-```python
-pipeline = ThemeGraphPipeline(wrds_username='your_username')
-```
-
-### Parameters
-- **Rolling windows**: `[10, 30, 50]` days (customizable)
-- **Distance metric**: `'angular'` or `'euclidean'`
-- **Community detection**: `'louvain'` or `'girvan_newman'`
-- **Sampling frequency**: `'D'` (daily), `'W'` (weekly), `'M'` (monthly)
-
-## Future Work
-
-### Backtesting Framework
-Planned implementation of strategy backtesting:
-- Community momentum strategies
-- MST centrality-based portfolios
-- Theme rotation algorithms
-- Risk-adjusted performance metrics
-
-See `docs/backtesting_plan.md` for detailed roadmap.
-
-### Enhancements
-- Real-time data streaming
-- Interactive web dashboard
-- Machine learning integration (GNNs)
-- Cloud deployment
-
-## Documentation
-
-- **Architecture**: `docs/architecture.md` - System design and module descriptions
-- **Backtesting Plan**: `docs/backtesting_plan.md` - Future strategy implementation
+- Python 3.8+, WRDS account with CRSP access
+- Key packages: `wrds`, `pandas`, `numpy`, `networkx`, `matplotlib`, `seaborn`
+- See `requirements.txt` for full list
 
 ## Contributing
 
-Contributions welcome! Please open issues or pull requests.
+Open issues or PRs on GitHub. Contributions welcome!
 
 ## License
 
 MIT License
 
-## Contact
+## Contact & Acknowledgments
 
-For questions or collaboration: [Your Contact Info]
+**Nancy Zhong** | [GitHub](https://github.com/nzhong12/thematic-investing)
 
-## Acknowledgments
-
-- WRDS for CRSP database access
-- NetworkX community for graph algorithms
-- Research inspired by market network analysis literature
+Built with WRDS/CRSP data and NetworkX. Inspired by market network analysis research.

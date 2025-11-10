@@ -1,6 +1,11 @@
 """
 Rolling Correlation Analysis with CRSP WRDS Data
 Downloads daily adjusted close prices for 10 large S&P stocks and computes rolling correlations.
+
+EXPORTS for other scripts:
+    - rolling_corrs: dict of {window: DataFrame} with all correlation matrices
+    - tickers: list of stock tickers
+    - returns: DataFrame of daily returns
 """
 
 import pandas as pd
@@ -22,9 +27,10 @@ print("\n" + "="*80)
 print("STEP 1: Getting S&P 500 stocks from WRDS")
 print("="*80)
 
-start_date = "2024-01-01"  # Using 2024 data (2025 data may not be available yet)
-end_date = "2024-12-31"
-num_stocks = 10
+start_date = "2024-01-01"  # Start Jan 1, 2024 (need enough history for 50-day rolling)
+end_date = "2024-12-31"    # Request through Oct 2025 (will get whatever is available in WRDS)
+num_stocks = 20
+print("NOTE: WRDS/CRSP data typically has a lag. If 2025 data is unavailable, will use most recent available.")
 
 print(f"\nDate range: {start_date} to {end_date}")
 print(f"Number of stocks to select: {num_stocks}")
@@ -170,6 +176,9 @@ rolling_corrs = {}
     # 50:  <DataFrame with 201×10 rows × 10 cols>
 # }
 
+# Store average correlations for each stock across all windows
+avg_corrs_by_window = {}
+
 for window in windows:
     print(f"\n{'='*80}")
     print(f"COMPUTING {window}-DAY ROLLING CORRELATIONS")
@@ -191,73 +200,205 @@ for window in windows:
     latest_date = rolling_corr.index.get_level_values(0)[-1]
     latest_corr_matrix = rolling_corr.loc[latest_date]
     
-    # Display the correlation matrix
-    print(f"\n{'─'*80}")
-    print(f"--- {window}-day rolling correlation matrix ---")
-    print(f"Latest date: {latest_date}")
-    print(f"{'─'*80}")
-    print("\n📊 Correlation Matrix (rounded to 2 decimals):")
-    print(latest_corr_matrix.round(2))
+    # Calculate average correlation for each stock across ALL dates in this window
+    all_dates_window = rolling_corr.index.get_level_values(0).unique()
+    stock_avg_corrs = {}
     
-    # Show some interesting statistics
-    print(f"\n📊 Correlation Statistics:")
-    # Get upper triangle (exclude diagonal)
-    mask = np.triu(np.ones_like(latest_corr_matrix, dtype=bool), k=1)
-    upper_triangle = latest_corr_matrix.where(mask)
-    corr_values = upper_triangle.stack().values
+    for stock in latest_corr_matrix.index:
+        # Get all correlation values for this stock across all dates (excluding self-correlation)
+        all_corrs = []
+        for date in all_dates_window:
+            corr_matrix_date = rolling_corr.loc[date]
+            stock_corrs = corr_matrix_date.loc[stock].drop(stock)  # Exclude self
+            all_corrs.extend(stock_corrs.values)
+        stock_avg_corrs[stock] = np.mean(all_corrs)
     
-    print(f"  Mean correlation: {corr_values.mean():.4f}")
-    print(f"  Median correlation: {np.median(corr_values):.4f}")
-    print(f"  Min correlation: {corr_values.min():.4f}")
-    print(f"  Max correlation: {corr_values.max():.4f}")
-    print(f"  Std deviation: {corr_values.std():.4f}")
+    avg_corrs_by_window[window] = stock_avg_corrs
     
-    # Find highest and lowest correlations
-    print(f"\n📊 Highest correlations:")
-    for i, ticker1 in enumerate(latest_corr_matrix.index):
-        for j, ticker2 in enumerate(latest_corr_matrix.columns):
-            if i < j:  # Upper triangle only
-                corr_val = latest_corr_matrix.loc[ticker1, ticker2]
-                if corr_val > 0.7:  # Strong positive correlation
-                    print(f"  {ticker1} <-> {ticker2}: {corr_val:.4f}")
-    
-    print(f"\n📊 Lowest correlations:")
-    for i, ticker1 in enumerate(latest_corr_matrix.index):
-        for j, ticker2 in enumerate(latest_corr_matrix.columns):
-            if i < j:  # Upper triangle only
-                corr_val = latest_corr_matrix.loc[ticker1, ticker2]
-                if corr_val < 0.3:  # Weak or negative correlation
-                    print(f"  {ticker1} <-> {ticker2}: {corr_val:.4f}")
-    
-    # PROOF: Show that we have ALL matrices saved - display last 10 full matrices
+    # ANALYSIS: Show last 2 days with most/least correlated pairs for each stock
     print(f"\n{'='*80}")
-    print(f"PROOF: FULL CORRELATION MATRICES FOR LAST 10 TRADING DAYS")
+    print(f"INDIVIDUAL STOCK CORRELATIONS - LAST 2 TRADING DAYS ONLY")
     print(f"{'='*80}")
+    print(f"(For each stock, showing most/least correlated pairs on last 2 days)")
     
     # Get all unique dates
     all_dates = rolling_corr.index.get_level_values(0).unique()
-    last_10_dates = all_dates[-10:]
+    last_2_dates = all_dates[-2:]
     
-    print(f"\n✓ Total matrices computed for this window: {len(all_dates)}")
-    print(f"✓ Displaying FULL matrices for last 10 dates: {last_10_dates[0]} to {last_10_dates[-1]}")
-    print(f"✓ Each matrix is {len(returns.columns)} × {len(returns.columns)}")
+    print(f"\nShowing dates: {last_2_dates[0]} and {last_2_dates[-1]}")
+    print(f"Window: {window} days")
     
-    # Display each full correlation matrix
-    for matrix_idx, date in enumerate(last_10_dates, 1):
+    # First, calculate all-time average correlations for each stock
+    print(f"\n{'='*80}")
+    print(f"ALL-TIME AVERAGE CORRELATIONS (across all {len(all_dates)} trading days)")
+    print(f"{'='*80}")
+    print(f"For each stock, showing most/least correlated partners based on AVERAGE correlation")
+    
+    # Calculate average correlation for each stock pair across all time
+    stock_pair_avgs = {}
+    for stock in rolling_corr.loc[all_dates[-1]].index:
+        stock_pair_avgs[stock] = {}
+        for other_stock in rolling_corr.loc[all_dates[-1]].columns:
+            if stock != other_stock:
+                # Get all correlations across all dates (excluding NaN)
+                corr_vals = []
+                for date in all_dates:
+                    corr_matrix = rolling_corr.loc[date]
+                    val = corr_matrix.loc[stock, other_stock]
+                    if not np.isnan(val):
+                        corr_vals.append(val)
+                
+                if len(corr_vals) > 0:
+                    stock_pair_avgs[stock][other_stock] = np.mean(corr_vals)
+    
+    # Display most/least correlated for each stock (all-time)
+    print(f"\n{'─'*80}")
+    for stock in sorted(stock_pair_avgs.keys()):
+        if len(stock_pair_avgs[stock]) > 0:
+            # Find most correlated
+            most_corr_stock = max(stock_pair_avgs[stock], key=stock_pair_avgs[stock].get)
+            most_corr_value = stock_pair_avgs[stock][most_corr_stock]
+            
+            # Find least correlated
+            least_corr_stock = min(stock_pair_avgs[stock], key=stock_pair_avgs[stock].get)
+            least_corr_value = stock_pair_avgs[stock][least_corr_stock]
+            
+            print(f"\n{stock}:")
+            print(f"  ✓ MOST correlated  → {most_corr_stock:6s}: {most_corr_value:+.4f} (avg over time)")
+            print(f"  ✗ LEAST correlated → {least_corr_stock:6s}: {least_corr_value:+.4f} (avg over time)")
+    
+    # Now show the last 2 days matrices for visual reference only
+    for day_idx, date in enumerate(last_2_dates, 1):
         date_str = date.strftime('%Y-%m-%d') if hasattr(date, 'strftime') else str(date)
         
-        print(f"\n{'─'*80}")
-        print(f"Matrix {matrix_idx}/10 - Date: {date_str} ({window}-day window)")
-        print(f"{'─'*80}")
+        print(f"\n{'='*80}")
+        print(f"CORRELATION MATRIX - {date_str} (for visual reference only)")
+        print(f"{'='*80}")
         
         corr_matrix = rolling_corr.loc[date]
-        print(corr_matrix.round(2))
+        print("\n", corr_matrix.round(2))
         
-        # Quick stats for this date
-        mask_proof = np.triu(np.ones_like(corr_matrix, dtype=bool), k=1)
-        upper_tri_proof = corr_matrix.where(mask_proof)
-        corr_vals_proof = upper_tri_proof.stack().values
-        print(f"  → Avg: {corr_vals_proof.mean():.4f}, Min: {corr_vals_proof.min():.4f}, Max: {corr_vals_proof.max():.4f}")
+
+    
+    # TOP 10 MOST CORRELATED PAIRS (by magnitude) - ACROSS ENTIRE YEAR
+    print(f"\n{'='*80}")
+    print(f"TOP 10 MOST CORRELATED PAIRS (by magnitude) - {window}-day window")
+    print(f"{'='*80}")
+    print(f"Analyzing average correlations across ALL {len(all_dates)} trading days")
+    
+    # Calculate average correlation for each pair across ALL dates
+    pairs_avg_list = []
+    
+    # Get unique stock pairs
+    latest_corr = rolling_corr.loc[all_dates[-1]]
+    for i, stock1 in enumerate(latest_corr.index):
+        for j, stock2 in enumerate(latest_corr.columns):
+            if i < j:  # Upper triangle only to avoid duplicates
+                # Calculate average correlation across all dates (excluding NaN)
+                corr_values = []
+                for date in all_dates:
+                    corr_matrix = rolling_corr.loc[date]
+                    val = corr_matrix.loc[stock1, stock2]
+                    if not np.isnan(val):  # Skip NaN values
+                        corr_values.append(val)
+                
+                # Only calculate if we have valid data
+                if len(corr_values) > 0:
+                    avg_corr = np.mean(corr_values)
+                    std_corr = np.std(corr_values)
+                    min_corr = np.min(corr_values)
+                    max_corr = np.max(corr_values)
+                    
+                    pairs_avg_list.append({
+                        'stock1': stock1,
+                        'stock2': stock2,
+                        'avg_correlation': avg_corr,
+                        'std_correlation': std_corr,
+                        'min_correlation': min_corr,
+                        'max_correlation': max_corr,
+                        'abs_avg_correlation': abs(avg_corr),
+                        'num_valid_days': len(corr_values)
+                    })
+    
+    # Sort by absolute value of average correlation and get top 10
+    pairs_avg_df = pd.DataFrame(pairs_avg_list)
+    
+    if len(pairs_avg_df) == 0:
+        print("\n⚠️  No valid correlation data available for this window")
+        print(f"   (This can happen if window size {window} is too large for the data)")
+    else:
+        top_10_pairs = pairs_avg_df.nlargest(10, 'abs_avg_correlation')
+        
+        print(f"\n{'Rank':<6}{'Stock 1':<8}{'Stock 2':<8}{'Avg Corr':>12}{'Std Dev':>10}{'Range':>18}")
+        print(f"{'─'*6}{'─'*8}{'─'*8}{'─'*12}{'─'*10}{'─'*18}")
+        for idx, row in enumerate(top_10_pairs.itertuples(), 1):
+            corr_range = f"[{row.min_correlation:+.2f}, {row.max_correlation:+.2f}]"
+            print(f"{idx:<6}{row.stock1:<8}{row.stock2:<8}{row.avg_correlation:>+12.4f}{row.std_correlation:>10.4f}{corr_range:>18}")
+    
+    # PERSISTENT HIGH CORRELATIONS ANALYSIS
+    print(f"\n{'='*80}")
+    print(f"PERSISTENT HIGH CORRELATIONS - {window}-day window")
+    print(f"{'='*80}")
+    print(f"Checking which pairs have stayed highly correlated (|r| > 0.60) over time")
+    
+    # Define "high correlation" threshold and "persistent" period
+    HIGH_CORR_THRESHOLD = 0.60
+    LOOKBACK_DAYS = min(30, len(all_dates))  # Look back 30 days or all available
+    
+    print(f"\nCriteria:")
+    print(f"  - High correlation: |correlation| > {HIGH_CORR_THRESHOLD}")
+    print(f"  - Persistent period: Last {LOOKBACK_DAYS} trading days")
+    print(f"  - Consistency: High correlation in ≥80% of days checked")
+    
+    # Check each pair over the lookback period
+    lookback_dates = all_dates[-LOOKBACK_DAYS:]
+    persistent_pairs = []
+    
+    for i, stock1 in enumerate(latest_corr.index):
+        for j, stock2 in enumerate(latest_corr.columns):
+            if i < j:  # Upper triangle only
+                # Count how many days this pair had high correlation (skip NaN)
+                high_corr_days = 0
+                total_days = 0
+                corr_values_for_avg = []
+                
+                for check_date in lookback_dates:
+                    corr_matrix_check = rolling_corr.loc[check_date]
+                    corr_val = corr_matrix_check.loc[stock1, stock2]
+                    
+                    # Skip NaN values
+                    if not np.isnan(corr_val):
+                        total_days += 1
+                        corr_values_for_avg.append(corr_val)
+                        if abs(corr_val) > HIGH_CORR_THRESHOLD:
+                            high_corr_days += 1
+                
+                # If high correlation in ≥80% of days, it's persistent
+                consistency = high_corr_days / total_days if total_days > 0 else 0
+                if consistency >= 0.80 and len(corr_values_for_avg) > 0:
+                    avg_corr = np.mean(corr_values_for_avg)
+                    persistent_pairs.append({
+                        'stock1': stock1,
+                        'stock2': stock2,
+                        'avg_correlation': avg_corr,
+                        'consistency_pct': consistency * 100,
+                        'days_high': high_corr_days,
+                        'total_days': total_days
+                    })
+    
+    if len(persistent_pairs) > 0:
+        persistent_df = pd.DataFrame(persistent_pairs).sort_values('consistency_pct', ascending=False)
+        print(f"\n✓ Found {len(persistent_pairs)} persistently correlated pairs:\n")
+        print(f"{'Stock 1':<8}{'Stock 2':<8}{'Avg Corr':>12}{'Consistency':>12}{'Days':>10}")
+        print(f"{'─'*8}{'─'*8}{'─'*12}{'─'*12}{'─'*10}")
+        for row in persistent_df.itertuples():
+            print(f"{row.stock1:<8}{row.stock2:<8}{row.avg_correlation:>+12.4f}{row.consistency_pct:>11.1f}%"
+                  f"{row.days_high:>5}/{row.total_days:<3}")
+    else:
+        print(f"\n✗ No pairs found with persistent high correlation over {LOOKBACK_DAYS} days")
+        print(f"   (This is common for longer windows like 50-day)")
+    
+    print(f"\n{'='*80}")
 
 # ============================================================
 # STEP 5: Visualize correlation matrices
@@ -497,3 +638,14 @@ for window in windows:
 
 print("\n" + "="*80)
 print("Analysis complete! ✓")
+
+# Save data for MST visualization
+import pickle
+print("\nSaving correlation data for MST visualization...")
+with open('correlation_data.pkl', 'wb') as f:
+    pickle.dump({
+        'rolling_corrs': rolling_corrs,
+        'tickers': tickers,
+        'returns': returns
+    }, f)
+print("✓ Saved to correlation_data.pkl")
