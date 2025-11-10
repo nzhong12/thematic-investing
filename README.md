@@ -54,7 +54,7 @@ Run the full analysis pipeline to compute correlations and visualize MST:
 # works rn
 python sp500_rolling_correlation.py
 
-# Step 2: Visualize the Minimum Spanning Tree (doesn't work yet)
+# Step 2 only after Step 1: Visualize the Minimum Spanning Tree (needs work)
 python show_mst_only.py
 ```
 
