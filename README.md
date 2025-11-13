@@ -45,6 +45,17 @@ python -c "import wrds; wrds.Connection()"
 
 ## How to Run
 
+### ⚠️ Important: Always Generate Fresh Data First
+
+**Before running `extract_clusters.py`**, make sure to run `sp500_rolling_correlation.py` to generate the most recent correlation, and after changing the dates in `sp500_rolling_correlation.py`, rerun it before running `extract_clusters.py` :
+
+```bash
+python scripts/sp500_rolling_correlation.py  # Run this first!
+python scripts/extract_clusters.py           # Then run clustering
+```
+
+This ensures `correlation_data.pkl` has complete 2022-2024 coverage. If your cluster outputs start from 2023-06-08 instead of 2022-01-XX, re-run the correlation script.
+
 ### 🚀 Method 1: Complete Workflow (Recommended for First Time)
 
 Run the full analysis pipeline to compute correlations and visualize MST:
@@ -52,27 +63,34 @@ Run the full analysis pipeline to compute correlations and visualize MST:
 ```bash
 # Navigate to the project directory
 cd thematic-investing
-cd scripts
 
-# Step 1: Download data and compute rolling correlations
-python sp500_rolling_correlation.py
+# Step 1: Download data and compute rolling correlations (ALWAYS RUN FIRST)
+python scripts/sp500_rolling_correlation.py
 
 # Step 2: Visualize the Minimum Spanning Tree
-python show_mst_only.py
+python scripts/show_mst_only.py
+
+# Step 3 (Optional): Extract clusters for all trading days
+python scripts/extract_clusters.py
 ```
 
 **What happens:**
 1. `scripts/sp500_rolling_correlation.py`:
-   - Downloads S&P 500 stock data from WRDS CRSP (default: 20 stocks, 2024 data)
+   - Downloads S&P 500 stock data from WRDS CRSP (2022-2024, stocks with complete history)
    - Computes rolling correlations for 10-, 30-, and 50-day windows
    - Saves results to `correlation_data.pkl`
-   - Displays interactive correlation heatmaps and statistics
+   - Exports CSV time series and top 10 correlation pairs
 
 2. `scripts/show_mst_only.py`:
    - Loads pre-computed correlation data from `correlation_data.pkl`
    - Builds Minimum Spanning Tree (MST) from correlation network
-   - Visualizes MST with interactive graph layout
-   - Edge thickness shows correlation strength
+   - Visualizes MST with interactive graph layout (← → to change windows, ↑ ↓ to navigate dates)
+   - Edge thickness/color shows correlation strength
+
+3. `scripts/extract_clusters.py`:
+   - Loads `correlation_data.pkl` generated in Step 1
+   - Builds MST for each date, filters by correlation ≥ 0.6, extracts clusters
+   - Outputs daily cluster assignments to TXT files (~750 days per window)
 
 ### Key Files Explained
 
