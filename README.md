@@ -47,14 +47,9 @@ python -c "import wrds; wrds.Connection()"
 
 ### ⚠️ Important: Always Generate Fresh Data First
 
-**Before running `extract_clusters.py`**, make sure to run `sp500_rolling_correlation.py` to generate the most recent correlation, and after changing the dates in `sp500_rolling_correlation.py`, rerun it before running `extract_clusters.py` :
+**Before running `extract_clusters_corr.py` and `extract_clusters_jaccard.py`**, make sure to run `sp500_rolling_correlation.py` to generate the most recent correlation, and after changing the dates in `sp500_rolling_correlation.py`, rerun it before running `extract_clusters_corr.py` :
 
-```bash
-python scripts/sp500_rolling_correlation.py  # Run this first!
-python scripts/extract_clusters.py           # Then run clustering
-```
-
-This ensures `correlation_data.pkl` has complete 2022-2024 coverage. If your cluster outputs start from 2023-06-08 instead of 2022-01-XX, re-run the correlation script.
+This ensures datasets have complete 202X-2024 coverage (most recent coverage as shown in sp500 file)
 
 ### 🚀 Method 1: Complete Workflow (Recommended for First Time)
 
@@ -70,8 +65,9 @@ python scripts/sp500_rolling_correlation.py
 # Step 2: Visualize the Minimum Spanning Tree
 python scripts/show_mst_only.py
 
-# Step 3 (Optional): Extract clusters for all trading days
-python scripts/extract_clusters.py
+# Step 3 Extract clusters for all trading days
+python scripts/extract_clusters_corr.py
+python scripts/extract_clusters_jaccard.py
 ```
 
 **What happens:**
@@ -87,9 +83,19 @@ python scripts/extract_clusters.py
    - Visualizes MST with interactive graph layout (← → to change windows, ↑ ↓ to navigate dates)
    - Edge thickness/color shows correlation strength
 
-3. `scripts/extract_clusters.py`:
+3. `scripts/extract_clusters_corr.py`:
    - Loads `correlation_data.pkl` generated in Step 1
    - Builds MST for each date, filters by correlation ≥ 0.6, extracts clusters
+   - Uses basic pairwise correlation threshold method
+   - Outputs daily cluster assignments to TXT files (~750 days per window)
+
+4. `scripts/extract_clusters_jaccard.py`:
+   - Loads `correlation_data.pkl` generated in Step 1
+   - Computes correlation neighborhoods for each stock (G_A = {X | r_AX > 0.6})
+   - Calculates Jaccard distance between neighborhoods: d(A,B) = 1 - |G_A ∩ G_B| / |G_A ∪ G_B|
+   - Applies hierarchical clustering (agglomerative, average linkage, mid-level cut)
+   - Merges singleton clusters into 'outliers' group
+   - More robust than pairwise method, captures higher-order correlation patterns
    - Outputs daily cluster assignments to TXT files (~750 days per window)
 
 ### Key Files Explained
@@ -100,8 +106,8 @@ python scripts/extract_clusters.py
 |------|---------|---------|
 | **scripts/sp500_rolling_correlation.py** | **Data Download & Correlation Computation** | Connects to WRDS CRSP database, downloads S&P 500 stock data (2022-2024), computes 10/30/50-day rolling correlations, exports CSV time series and top 10 pairs analysis. Generates `correlation_data.pkl` for visualization. **Run this first!** |
 | **scripts/show_mst_only.py** | **MST Visualization** | Loads correlation data, creates Minimum Spanning Tree from correlation matrix, visualizes MST based on selected date and window size. Interactive navigation: ← → changes window (10/30/50 days), ↑ ↓ navigates through all ~750 trading days. Edge thickness/color = correlation strength. |
-| **scripts/extract_clusters.py** | **Basic Correlation Clustering** | Uses pairwise correlations with threshold-based clustering. Builds MST, filters edges where corr ≥ 0.6, extracts connected components. Simple and fast. Outputs: `corr_clusters_*.txt`, `corr_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |
-| **scripts/extract_clusters_jaccard.py** | **Jaccard + Hierarchical Clustering** | Uses Jaccard distance between correlation neighborhoods with hierarchical  clustering. More robust, captures higher-order relationships. Outputs: `jaccard_clusters_*.txt`, `jaccard_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |
+| **scripts/extract_clusters_corr.py** | **Basic Correlation Clustering** | Uses pairwise correlations with threshold-based clustering. Builds MST, filters edges where corr ≥ 0.6, extracts connected components. Simple and fast. Outputs: `corr_clusters_*.txt`, `corr_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |
+| **scripts/extract_clusters_jaccard.py** | **Jaccard + Hierarchical Clustering** | Computes correlation neighborhoods (G_A = {X \| r_AX > 0.6}), calculates Jaccard distance d(A,B) = 1 - \|G_A ∩ G_B\| / \|G_A ∪ G_B\|, applies hierarchical clustering (agglomerative, average linkage, mid-level cut). More robust, captures higher-order relationships. Merges singletons into 'outliers'. Outputs: `jaccard_clusters_*.txt`, `jaccard_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |
 
 **Outputs Generated (in `scripts/outputs/`):**
 
@@ -200,14 +206,15 @@ Then run from project directory:
 cd thematic-investing
 python scripts/sp500_rolling_correlation.py
 python scripts/show_mst_only.py
-python scripts/extract_clusters.py
+python scripts/extract_clusters_corr.py
+python scripts/extract_clusters_jaccard.py
 ```
 
 ## Current Implementation Status
 
 **✅ Completed (Section 2.2 from paper):**
 - Rolling correlation computation (10/30/50-day windows)
-- **Method 1: Basic correlation threshold clustering** (`extract_clusters.py`)
+- **Method 1: Basic correlation threshold clustering** (`extract_clusters_corr.py`)
   - MST construction using distance metric: `d_ij = sqrt(2 * (1 - corr_ij))`
   - Edge filtering by correlation threshold (δ = 0.6)
   - Cluster extraction via connected components
@@ -219,7 +226,7 @@ python scripts/extract_clusters.py
 
 **🚧 Next Steps (Future Enhancements):**
 
-1. **Alternative Clustering Methods**
+1. **Alternative Clustering Methods (section 2.2 of paper)**
    - Try different linkage methods (knn, single, ward, etc)
    - Experiment with different dendrogram cut strategies
    - Compare clustering quality metrics across methods
