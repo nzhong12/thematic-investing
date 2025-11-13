@@ -51,16 +51,49 @@ else:
 windows = sorted(rolling_corrs.keys())
 current_window_idx = windows.index(30) if 30 in windows else 0
 
-# Get available dates (last 10 dates)
+# Get available dates (ALL dates - no limit, can navigate through entire dataset)
 all_dates = rolling_corrs[windows[current_window_idx]].index.get_level_values(0).unique()
-available_dates = sorted(all_dates)[-10:]  # Last 10 dates
+available_dates = sorted(all_dates)  # All dates from 2022-2024 (~750 trading days)
 current_date_idx = len(available_dates) - 1  # Start with most recent
 
 # ============================================================
 # Functions to build and visualize MST
 # ============================================================
+# IMPORTANT: These functions build and display MST for ONE SPECIFIC window at a time.
+# - The MST is built using ONLY the correlation matrix for the selected window
+#   (e.g., 10-day, 30-day, or 50-day rolling correlation)
+# - This is NOT an average across windows - each window has its own separate MST
+# - Edge strengths show correlations for THAT SPECIFIC window and date only
+# - Use arrow keys (← →) to switch between different windows and see how
+#   the correlation structure changes with different time horizons
+# ============================================================
+
 def build_mst(window, date):
-    """Build MST for given window and date."""
+    """
+    Build MST for a SINGLE specific window and date.
+    
+    Parameters:
+    -----------
+    window : int
+        The rolling window size (e.g., 10, 30, or 50 days)
+    date : datetime
+        The specific date to analyze
+    
+    Returns:
+    --------
+    mst : networkx.Graph
+        Minimum spanning tree for this window/date combination
+    dist_matrix : pandas.DataFrame
+        Distance matrix (converted from correlation)
+    corr_matrix : pandas.DataFrame
+        Correlation matrix for this specific window at this date
+    
+    Note:
+    -----
+    This builds the MST using ONLY the correlations from the specified window.
+    For example, if window=30, this uses the 30-day rolling correlation on that date.
+    Edge weights represent the correlation strength for THAT window, not averaged.
+    """
     corr_df = rolling_corrs[window]
     corr_matrix = corr_df.loc[date]
     
@@ -86,7 +119,33 @@ def build_mst(window, date):
     return mst, dist_matrix, corr_matrix
 
 def visualize_mst(mst, corr_matrix, window, date):
-    """Visualize MST with dramatic edge thickness and color."""
+    """
+    Visualize MST with dramatic edge thickness and color for ONE specific window/date.
+    
+    Parameters:
+    -----------
+    mst : networkx.Graph
+        The minimum spanning tree to visualize
+    corr_matrix : pandas.DataFrame
+        Correlation matrix for this specific window and date
+    window : int
+        The rolling window size (10, 30, or 50 days)
+    date : datetime
+        The specific date being visualized
+    
+    Visualization Details:
+    ----------------------
+    - Edge thickness: Thicker = stronger correlation (cubic scaling for drama)
+    - Edge color: Red = strong positive correlation, Blue = weak correlation
+    - Statistics box: Shows top 3 strongest correlations for THIS window/date only
+    - NOT averaged across windows - shows correlation structure at this specific
+      time horizon and date
+    
+    Navigation:
+    -----------
+    Use arrow keys to explore different windows and dates to see how correlation
+    structure changes over time and across different rolling window sizes.
+    """
     ax.clear()
     
     # Position nodes (use consistent seed for stable layout)
@@ -154,23 +213,12 @@ def visualize_mst(mst, corr_matrix, window, date):
     corr_values.sort(key=lambda x: abs(x[2]), reverse=True)
     top_correlations = corr_values[:3]
     
-    # Get MST strongest edges
-    edge_correlations = []
-    for u, v in edges:
-        dist = mst[u][v]['weight']
-        corr = 1 - (dist**2)/2
-        edge_correlations.append((u, v, corr))
-    edge_correlations.sort(key=lambda x: x[2], reverse=True)
-    
     # Create statistics text box
-    stats_text = f"📊 {window}-day Rolling Correlation Stats\n"
+    # Note: Showing correlations for THIS specific date's {window}-day rolling window
+    stats_text = f"📊 {window}-day Rolling Correlation\n"
     stats_text += f"Date: {date.strftime('%Y-%m-%d') if hasattr(date, 'strftime') else str(date)}\n"
-    stats_text += f"\nStrongest Correlations (Overall):\n"
+    stats_text += f"\nStrongest Correlations (MST Edges):\n"
     for i, (t1, t2, corr) in enumerate(top_correlations[:3], 1):
-        stats_text += f"{i}. {t1}-{t2}: {corr:.3f}\n"
-    
-    stats_text += f"\nStrongest MST Edges:\n"
-    for i, (t1, t2, corr) in enumerate(edge_correlations[:3], 1):
         stats_text += f"{i}. {t1}-{t2}: {corr:.3f}\n"
     
     # Add text box in bottom-left corner
@@ -180,9 +228,16 @@ def visualize_mst(mst, corr_matrix, window, date):
             family='monospace')
     
     date_str = date.strftime('%Y-%m-%d') if hasattr(date, 'strftime') else str(date)
+    
+    # Calculate which date this is (out of how many total trading days)
+    # Note: available_dates contains ALL dates in the dataset (2022-2024)
+    # You can navigate through the entire ~750 trading days using arrow keys
+    date_num = current_date_idx + 1  # Current position in dataset
+    total_dates = len(available_dates)  # Total trading days in dataset
+    
     ax.set_title(f'Minimum Spanning Tree - {window}-day Rolling Correlation\n'
-                 f'Date: {date_str}\n'
-                 f'Edge: Red/Thick = Strong Correlation | Blue/Thin = Weak Correlation\n'
+                 f'Date: {date_str} (showing {date_num} of {total_dates} trading days)\n'
+                 f'Edge Thickness/Color = Correlation Strength (Red/Thick=Strong, Blue/Thin=Weak)\n'
                  f'Use ← → to change window (10/30/50 days) | ↑ ↓ to change date',
                  fontsize=12, fontweight='bold', pad=20)
     ax.axis('off')
@@ -215,14 +270,19 @@ def on_key(event):
         plt.close()
 
 def update_plot():
-    """Update plot with current window and date."""
+    """
+    Update plot with current window and date.
+    
+    Builds MST on-demand for the selected window/date combination.
+    Does NOT pre-generate all MSTs - calculates only when needed for navigation.
+    """
     global available_dates, current_date_idx
     
     window = windows[current_window_idx]
     
-    # Update available dates for current window
+    # Update available dates for current window (ALL dates, not just last 10)
     all_dates = rolling_corrs[window].index.get_level_values(0).unique()
-    available_dates = sorted(all_dates)[-10:]  # Last 10 dates
+    available_dates = sorted(all_dates)  # All dates in dataset
     
     # Adjust date index if needed
     if current_date_idx >= len(available_dates):
@@ -230,6 +290,7 @@ def update_plot():
     
     date = available_dates[current_date_idx]
     
+    # Build MST on-demand for this specific window and date
     mst, dist_matrix, corr_matrix = build_mst(window, date)
     visualize_mst(mst, corr_matrix, window, date)
 
@@ -238,7 +299,7 @@ def update_plot():
 # ============================================================
 print("\nControls:")
 print("  ← → : Switch between 10/30/50-day windows")
-print("  ↑ ↓ : Navigate through last 10 dates")
+print("  ↑ ↓ : Navigate through ALL dates in dataset (~750 trading days)")
 print("  Q/Esc: Quit")
 
 fig, ax = plt.subplots(figsize=(16, 12))

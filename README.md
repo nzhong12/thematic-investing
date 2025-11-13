@@ -50,22 +50,25 @@ python -c "import wrds; wrds.Connection()"
 Run the full analysis pipeline to compute correlations and visualize MST:
 
 ```bash
+# Navigate to the project directory
+cd thematic-investing
+cd scripts
+
 # Step 1: Download data and compute rolling correlations
-# works rn
 python sp500_rolling_correlation.py
 
-# Step 2 only after Step 1: Visualize the Minimum Spanning Tree (needs work)
+# Step 2: Visualize the Minimum Spanning Tree
 python show_mst_only.py
 ```
 
 **What happens:**
-1. `sp500_rolling_correlation.py`:
+1. `scripts/sp500_rolling_correlation.py`:
    - Downloads S&P 500 stock data from WRDS CRSP (default: 20 stocks, 2024 data)
    - Computes rolling correlations for 10-, 30-, and 50-day windows
    - Saves results to `correlation_data.pkl`
    - Displays interactive correlation heatmaps and statistics
 
-2. `show_mst_only.py`:
+2. `scripts/show_mst_only.py`:
    - Loads pre-computed correlation data from `correlation_data.pkl`
    - Builds Minimum Spanning Tree (MST) from correlation network
    - Visualizes MST with interactive graph layout
@@ -73,21 +76,32 @@ python show_mst_only.py
 
 ### Key Files Explained
 
-| File | Purpose | When to Use |
-|------|---------|-------------|
-| **sp500_rolling_correlation.py** | Downloads S&P 500 data from WRDS and computes rolling correlations for multiple time windows | **Run first** - generates `correlation_data.pkl` |
-| **show_mst_only.py** | Loads pre-computed correlation data and visualizes the MST graph | **Run second** - quick visualization of MST |
-| **run_analysis_with_mst.py** | Complete analysis including data download, correlation computation, MST construction, and statistics | Run for full analysis with printed metrics |
-| **mst_demo.py** | Simple demonstration with sample data | Run for quick demo without WRDS connection |
-| **src/example_usage.py** | Example of using the pipeline API programmatically | Use as template for custom analysis |
+**Main Scripts:**
+
+| File | Purpose | Details |
+|------|---------|---------|
+| **scripts/sp500_rolling_correlation.py** | **Data Download & Correlation Computation** | Connects to WRDS CRSP database, downloads S&P 500 stock data (2022-2024), computes 10/30/50-day rolling correlations, exports CSV time series and top 10 pairs analysis. Generates `correlation_data.pkl` for visualization. |
+| **scripts/show_mst_only.py** | **MST Visualization** | Loads correlation data, creates Minimum Spanning Tree from correlation matrix, visualizes MST based on selected date and window size. Interactive navigation: ← → changes window (10/30/50 days), ↑ ↓ navigates through all ~750 trading days. Edge thickness/color = correlation strength. |
+| **scripts/run_analysis_with_mst.py** | **Combined Analysis** | *(Optional - may be outdated)* Runs full analysis pipeline with printed statistics. |
+
+**Outputs Generated (in `scripts/outputs/`):**
+- `correlation_10day_2022-2024.csv` - Time series: rows=dates, columns=stock pairs, values=10-day rolling correlations
+- `correlation_30day_2022-2024.csv` - Time series: 30-day rolling correlations
+- `correlation_50day_2022-2024.csv` - Time series: 50-day rolling correlations
+- `top10_correlations_10day.txt` - Top 10 most correlated pairs for 10-day window (avg, std dev, range)
+- `top10_correlations_30day.txt` - Top 10 pairs for 30-day window
+- `top10_correlations_50day.txt` - Top 10 pairs for 50-day window
 
 ## Examples
 
 ### Example 1: Basic Workflow
 
 ```bash
+# Navigate to project directory
+$ cd thematic-investing
+
 # Step 1: Download data and compute correlations
-$ python sp500_rolling_correlation.py
+$ python scripts/sp500_rolling_correlation.py
 
 ================================================================================
 ROLLING CORRELATION ANALYSIS - 10 LARGE S&P STOCKS
@@ -117,7 +131,7 @@ STEP 3: Interactive Visualization
 
 ```bash
 # Step 2: Visualize MST
-$ python show_mst_only.py
+$ python scripts/show_mst_only.py
 
 Loading correlation data...
 ✓ Loaded rolling_corrs with 3 windows: [10, 30, 50]
@@ -134,7 +148,7 @@ Building MST for 30-day window...
 
 ### Example 2: Possible Tweaks
 
-Edit parameters in `sp500_rolling_correlation.py`:
+Edit parameters in `scripts/sp500_rolling_correlation.py`:
 
 ```python
 start_date = "2023-01-01"  # Change date range
@@ -142,10 +156,11 @@ end_date = "2024-12-31"
 num_stocks = 50            # Change number of stocks (affects n×n correlation matrix)
 ```
 
-Then run:
+Then run from project directory:
 ```bash
-python sp500_rolling_correlation.py
-python show_mst_only.py
+cd thematic-investing
+python scripts/sp500_rolling_correlation.py
+python scripts/show_mst_only.py
 ```
 
 ## TODO IMPORTANT

@@ -1,0 +1,56 @@
+================================================================================
+TOP 10 MOST CORRELATED PAIRS - 50-day Rolling Window
+================================================================================
+
+Analysis Period: 2022-01-01 to 2024-12-31
+Total Trading Days Analyzed: 752
+Rolling Window: 50 days
+
+Metrics Explanation:
+  • Avg Corr: Average correlation over all 752 trading days
+  • Std Dev: Standard deviation (volatility) of the correlation
+  • Range: [Min, Max] correlation values observed
+
+================================================================================
+
+Rank  Stock 1   Stock 2       Avg Corr     Std Dev               Range
+────────────────────────────────────────────────────────────────────────────────
+1     DTE       ED             +0.8180      0.0601      [+0.64, +0.94]
+2     GD        HII            +0.6261      0.2144      [+0.01, +0.89]
+3     MGM       NXPI           +0.5419      0.1687      [-0.02, +0.80]
+4     FAST      XYL            +0.5345      0.1780      [+0.16, +0.86]
+5     KMI       MPC            +0.5089      0.1846      [+0.04, +0.86]
+6     NXPI      XYL            +0.4903      0.1520      [+0.09, +0.82]
+7     MGM       XYL            +0.4700      0.1314      [+0.06, +0.76]
+8     DTE       KMI            +0.4648      0.1303      [+0.09, +0.68]
+9     NOW       NXPI           +0.4614      0.1879      [+0.03, +0.80]
+10    MGM       NCLH           +0.4528      0.2439      [-0.08, +0.89]
+
+================================================================================
+INTERPRETATION GUIDE
+================================================================================
+
+High Average Correlation (>0.70):
+  → Stocks tend to move together consistently over time
+  → May belong to same sector or have similar business models
+  → Good candidates for sector rotation strategies
+
+Moderate Correlation (0.40-0.70):
+  → Stocks show meaningful but not perfect co-movement
+  → May share some common factors but retain independence
+  → Useful for diversification within a theme
+
+Low Standard Deviation (<0.15):
+  → Correlation is stable over time
+  → Relationship is persistent and reliable
+  → Better for long-term strategic positioning
+
+High Standard Deviation (>0.20):
+  → Correlation varies significantly over time
+  → Relationship may be regime-dependent
+  → Requires active monitoring and tactical adjustments
+
+================================================================================
+NOTE: Full correlation time series data available in:
+      outputs/correlation_50day_2022-2024.csv
+================================================================================

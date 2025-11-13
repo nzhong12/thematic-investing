@@ -27,10 +27,10 @@ print("\n" + "="*80)
 print("STEP 1: Getting S&P 500 stocks from WRDS")
 print("="*80)
 
-start_date = "2022-01-01"  # Start Jan 1, 2024 (need enough history for 50-day rolling)
-end_date = "2024-12-31"    # Request through Oct 2025 (will get whatever is available in WRDS)
+start_date = "2022-01-01"  # Start Jan 1, 2022 for full 3-year analysis
+end_date = "2024-12-31"    # End Dec 31, 2024
 num_stocks = 20
-print("NOTE: WRDS/CRSP data typically has a lag. If 2025 data is unavailable, will use most recent available.")
+print("NOTE: Selecting stocks with complete data history from 2022-2024 to ensure full 3-year analysis.")
 
 print(f"\nDate range: {start_date} to {end_date}")
 print(f"Number of stocks to select: {num_stocks}")
@@ -38,24 +38,25 @@ print(f"Number of stocks to select: {num_stocks}")
 print("\nConnecting to WRDS...")
 db = wrds.Connection()
 
-# Query to get S&P 500 constituent tickers from CRSP
-# Get stocks that were in S&P 500 during our date range
-print("\n✓ Querying S&P 500 constituents...")
+# Query to get S&P 500 constituent tickers that were CONSISTENTLY in the index
+# during the entire date range (to avoid missing data issues)
+print("\n✓ Querying S&P 500 constituents with complete data history...")
 sp500_query = """
     SELECT DISTINCT a.permno, b.ticker
     FROM crsp.dsp500list as a
     LEFT JOIN crsp.dsenames as b
     ON a.permno = b.permno
-        AND b.namedt <= '{end_date}'
-        AND b.nameendt >= '{start_date}'
-    WHERE a.ending >= '{start_date}'
+        AND b.namedt <= '{start_date}'
+        AND b.nameendt >= '{end_date}'
+    WHERE a.start <= '{start_date}'
+        AND a.ending >= '{end_date}'
         AND b.ticker IS NOT NULL
     ORDER BY a.permno
     LIMIT 100
 """.format(start_date=start_date, end_date=end_date)
 
 sp500_df = db.raw_sql(sp500_query)
-print(f"✓ Found {len(sp500_df)} S&P 500 stocks in CRSP")
+print(f"✓ Found {len(sp500_df)} S&P 500 stocks with complete data from 2022-2024")
 
 # Select first N stocks with valid tickers
 tickers = sp500_df['ticker'].dropna().unique()[:num_stocks].tolist()
@@ -237,17 +238,35 @@ for window in windows:
         corr_matrix = rolling_corr.loc[date]
         print("\n", corr_matrix.round(2))
     
-    # Save latest correlation matrix to CSV
-    latest_date = all_dates[-1]
-    latest_corr_matrix = rolling_corr.loc[latest_date]
-    date_str = latest_date.strftime('%Y-%m-%d') if hasattr(latest_date, 'strftime') else str(latest_date)
-    csv_filename = f'correlation_matrix_{window}day_{date_str}.csv'
-    latest_corr_matrix.to_csv(csv_filename)
-    print(f"\n✓ Saved latest {window}-day correlation matrix to: {csv_filename}")
+    # Save full time series of correlation matrices to outputs folder (all dates from 2022-01-01 to 2024-12-31)
+    # 
+    # CSV STRUCTURE EXPLANATION:
+    # --------------------------
+    # Each row represents ONE TRADING DATE
+    # Columns:
+    #   - 'date': The trading date
+    #   - 'STOCK1-STOCK2': Correlation coefficient between the two stocks for that date
+    #                      (e.g., 'AAPL-MSFT' = correlation between Apple and Microsoft)
+    # 
+    # Example row:
+    #   date,AAPL-MSFT,AAPL-GOOGL,MSFT-GOOGL,...
+    #   2024-01-15,0.7543,0.6821,0.8234,...
+    # 
+    # This means on 2024-01-15:
+    #   - AAPL and MSFT had 0.7543 correlation (75.43% co-movement over past N days)
+    #   - AAPL and GOOGL had 0.6821 correlation
+    #   - etc.
+    # 
+    # The correlation is calculated using the past N days of returns (rolling window),
+    # where N is the window size (10, 30, or 50 days).
+    #
+    print(f"\n✓ Preparing full time series CSV for {window}-day window...")
+    print(f"  Each row = 1 trading date with all stock-pair correlations for that date")
+    print(f"  Each column = 1 stock pair (e.g., 'AAPL-MSFT')")
     
-    # Save full time series of correlation matrices (all dates from 2022-01-01 to 2024-12-31)
-    # This creates a CSV with dates as rows and stock-pair correlations as columns
-    print(f"✓ Preparing full time series CSV for {window}-day window...")
+    # Create outputs directory if it doesn't exist
+    import os
+    os.makedirs('outputs', exist_ok=True)
     
     # Restructure: each row is a date, columns are stock pairs (e.g., "AAPL-MSFT")
     time_series_data = []
@@ -264,9 +283,9 @@ for window in windows:
         
         time_series_data.append(row_data)
     
-    # Convert to DataFrame and save
+    # Convert to DataFrame and save to outputs folder
     time_series_df = pd.DataFrame(time_series_data)
-    time_series_csv = f'correlation_timeseries_{window}day_2022-2024.csv'
+    time_series_csv = f'outputs/correlation_{window}day_2022-2024.csv'
     time_series_df.to_csv(time_series_csv, index=False)
     print(f"✓ Saved full time series ({len(all_dates)} dates) to: {time_series_csv}")
     
@@ -324,6 +343,53 @@ for window in windows:
         for idx, row in enumerate(top_10_pairs.itertuples(), 1):
             corr_range = f"[{row.min_correlation:+.2f}, {row.max_correlation:+.2f}]"
             print(f"{idx:<6}{row.stock1:<8}{row.stock2:<8}{row.avg_correlation:>+12.4f}{row.std_correlation:>10.4f}{corr_range:>18}")
+        
+        # Save top 10 pairs to file
+        output_file = f'outputs/top10_correlations_{window}day.txt'
+        with open(output_file, 'w') as f:
+            f.write("="*80 + "\n")
+            f.write(f"TOP 10 MOST CORRELATED PAIRS - {window}-day Rolling Window\n")
+            f.write("="*80 + "\n")
+            f.write(f"\nAnalysis Period: 2022-01-01 to 2024-12-31\n")
+            f.write(f"Total Trading Days Analyzed: {len(all_dates)}\n")
+            f.write(f"Rolling Window: {window} days\n")
+            f.write(f"\nMetrics Explanation:\n")
+            f.write(f"  • Avg Corr: Average correlation over all {len(all_dates)} trading days\n")
+            f.write(f"  • Std Dev: Standard deviation (volatility) of the correlation\n")
+            f.write(f"  • Range: [Min, Max] correlation values observed\n")
+            f.write("\n" + "="*80 + "\n\n")
+            
+            f.write(f"{'Rank':<6}{'Stock 1':<10}{'Stock 2':<10}{'Avg Corr':>12}{'Std Dev':>12}{'Range':>20}\n")
+            f.write("─"*80 + "\n")
+            for idx, row in enumerate(top_10_pairs.itertuples(), 1):
+                corr_range = f"[{row.min_correlation:+.2f}, {row.max_correlation:+.2f}]"
+                f.write(f"{idx:<6}{row.stock1:<10}{row.stock2:<10}{row.avg_correlation:>+12.4f}{row.std_correlation:>12.4f}{corr_range:>20}\n")
+            
+            f.write("\n" + "="*80 + "\n")
+            f.write("INTERPRETATION GUIDE\n")
+            f.write("="*80 + "\n\n")
+            f.write("High Average Correlation (>0.70):\n")
+            f.write("  → Stocks tend to move together consistently over time\n")
+            f.write("  → May belong to same sector or have similar business models\n")
+            f.write("  → Good candidates for sector rotation strategies\n\n")
+            f.write("Moderate Correlation (0.40-0.70):\n")
+            f.write("  → Stocks show meaningful but not perfect co-movement\n")
+            f.write("  → May share some common factors but retain independence\n")
+            f.write("  → Useful for diversification within a theme\n\n")
+            f.write("Low Standard Deviation (<0.15):\n")
+            f.write("  → Correlation is stable over time\n")
+            f.write("  → Relationship is persistent and reliable\n")
+            f.write("  → Better for long-term strategic positioning\n\n")
+            f.write("High Standard Deviation (>0.20):\n")
+            f.write("  → Correlation varies significantly over time\n")
+            f.write("  → Relationship may be regime-dependent\n")
+            f.write("  → Requires active monitoring and tactical adjustments\n\n")
+            f.write("="*80 + "\n")
+            f.write("NOTE: Full correlation time series data available in:\n")
+            f.write(f"      outputs/correlation_{window}day_2022-2024.csv\n")
+            f.write("="*80 + "\n")
+        
+        print(f"\n✓ Saved top 10 pairs analysis to: {output_file}")
     
     # PERSISTENT HIGH CORRELATIONS ANALYSIS
     print(f"\n{'='*80}")
