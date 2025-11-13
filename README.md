@@ -180,8 +180,8 @@ Building MST for 30-day window...
 Edit parameters in `scripts/sp500_rolling_correlation.py`:
 
 ```python
-start_date = "2023-01-01"  # Change date range
-end_date = "2024-12-31"    
+start_date = "2022-01-01"  # Change date range to whatever you want
+end_date = "2024-12-31"
 num_stocks = 50            # Change number of stocks (affects n×n correlation matrix)
 ```
 
@@ -190,15 +190,49 @@ Then run from project directory:
 cd thematic-investing
 python scripts/sp500_rolling_correlation.py
 python scripts/show_mst_only.py
+python scripts/extract_clusters.py
 ```
 
-## TODO IMPORTANT
+## Current Implementation Status
 
-- **Add 10-year historical data**: Update `sp500_rolling_correlation.py` to pull most recent 10 years of S&P 500 data from WRDS instead of just 2024
+**✅ Completed (Section 2.2 from paper):**
+- Rolling correlation computation (10/30/50-day windows)
+- MST construction using distance metric: `d_ij = sqrt(2 * (1 - corr_ij))`
+- Edge filtering by correlation threshold (δ = 0.6)
+- Cluster extraction via connected components
+- Daily cluster assignments exported (~750 days per window)
+
+**🚧 Next Steps (Future Enhancements):**
+
+1. **Jaccard Distance Between Clusters (Section 2.2)**
+   - Implement: `d(A,B) = 1 - |G_A ∩ G_B| / |G_A ∪ G_B|`
+   - Measure similarity between clusters across time
+   - Build cluster evolution tree/dendrogram
+
+2. **Cluster Stability Analysis**
+   - Track how cluster composition changes over time
+   - Identify persistent vs. transient themes
+   - Measure cluster lifetime and transitions
+
+3. **Time Series Distance Metrics (Section 2.3)**
+   - Implement alternative distance measures beyond correlation
+   - DTW (Dynamic Time Warping) for non-linear alignment
+   - Compare clustering results across distance metrics
+
+4. **Hierarchical Clustering**
+   - Apply agglomerative clustering using Jaccard distances
+   - Build multi-level cluster hierarchy
+   - Identify meta-themes (clusters of clusters)
+
+5. **Portfolio Applications**
+   - Theme-based portfolio construction from clusters
+   - Backtest cluster rotation strategies
+   - Risk analysis using cluster stability metrics
 
 **Output Interpretation:**
 - **Heatmaps**: Red/blue = positive/negative correlation; arrow keys navigate windows
 - **MST**: Thicker edges = stronger correlation; clusters = market themes/sectors
+- **Cluster Files**: Each line = one trading day's cluster assignments
 
 ## Requirements
 
@@ -216,6 +250,6 @@ MIT License
 
 ## Contact & Acknowledgments
 
-**Nancy Zhong** | [GitHub](https://github.com/nzhong12/thematic-investing)
+**Nathan Zhong** | [GitHub](https://github.com/nzhong12/thematic-investing)
 
 Built with WRDS/CRSP data and NetworkX. Inspired by market network analysis research.
