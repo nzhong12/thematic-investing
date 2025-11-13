@@ -98,17 +98,28 @@ python scripts/extract_clusters.py
 
 | File | Purpose | Details |
 |------|---------|---------|
-| **scripts/sp500_rolling_correlation.py** | **Data Download & Correlation Computation** | Connects to WRDS CRSP database, downloads S&P 500 stock data (2022-2024), computes 10/30/50-day rolling correlations, exports CSV time series and top 10 pairs analysis. Generates `correlation_data.pkl` for visualization. |
+| **scripts/sp500_rolling_correlation.py** | **Data Download & Correlation Computation** | Connects to WRDS CRSP database, downloads S&P 500 stock data (2022-2024), computes 10/30/50-day rolling correlations, exports CSV time series and top 10 pairs analysis. Generates `correlation_data.pkl` for visualization. **Run this first!** |
 | **scripts/show_mst_only.py** | **MST Visualization** | Loads correlation data, creates Minimum Spanning Tree from correlation matrix, visualizes MST based on selected date and window size. Interactive navigation: ← → changes window (10/30/50 days), ↑ ↓ navigates through all ~750 trading days. Edge thickness/color = correlation strength. |
-| **scripts/run_analysis_with_mst.py** | **Combined Analysis** | *(Optional - may be outdated)* Runs full analysis pipeline with printed statistics. |
+| **scripts/extract_clusters.py** | **Cluster Extraction** | Loads correlation data, builds MST for each date, filters edges by correlation threshold (≥0.6), extracts connected components as clusters. Outputs ~750 daily cluster assignments per window to TXT files. **Run after sp500_rolling_correlation.py!** |
 
 **Outputs Generated (in `scripts/outputs/`):**
-- `correlation_10day_2022-2024.csv` - Time series: rows=dates, columns=stock pairs, values=10-day rolling correlations
+
+*Correlation Data:*
+- `correlation_10day_2022-2024.csv` - Time series: rows=dates,columns=stock pairs, values=10-day rolling correlations
 - `correlation_30day_2022-2024.csv` - Time series: 30-day rolling correlations
 - `correlation_50day_2022-2024.csv` - Time series: 50-day rolling correlations
 - `top10_correlations_10day.txt` - Top 10 most correlated pairs for 10-day window (avg, std dev, range)
 - `top10_correlations_30day.txt` - Top 10 pairs for 30-day window
 - `top10_correlations_50day.txt` - Top 10 pairs for 50-day window
+
+*Cluster Data:*
+- `clusters_10day_2022-2024.txt` - Daily clusters for 10-day window (~750 lines, one per trading day)
+- `clusters_30day_2022-2024.txt` - Daily clusters for 30-day window
+- `clusters_50day_2022-2024.txt` - Daily clusters for 50-day window
+- `cluster_summary_10day.txt` - Summary statistics and example clusters for 10-day window
+- `cluster_summary_30day.txt` - Summary for 30-day window
+- `cluster_summary_50day.txt` - Summary for 50-day window
+- `clusters.pkl` - Pickled dictionary with all cluster data
 
 ## Examples
 
