@@ -59,7 +59,7 @@ from datetime import datetime
 # ============================================================
 CORRELATION_THRESHOLD = 0.6  # Minimum correlation to keep in cluster (δ in paper)
 INPUT_FILE = 'correlation_data.pkl'
-OUTPUT_DIR = 'scripts/outputs'
+OUTPUT_DIR = 'outputs'  # Relative to scripts/ folder where this file is located
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, 'clusters.pkl')
 
 print("="*80)
@@ -270,38 +270,13 @@ with open(OUTPUT_FILE, 'wb') as f:
     }, f)
 print(f"✓ Saved {len(all_clusters)} cluster snapshots to pickle")
 
-# Export clusters to CSV files (one per window)
-print("\nExporting clusters to CSV files...")
+# Export clusters to TXT files (one per window) with summary at top
+print("\nExporting clusters to TXT files...")
 for window in sorted(rolling_corrs.keys()):
-    csv_file = os.path.join(OUTPUT_DIR, f'clusters_{window}day_2022-2024.csv')
+    txt_file = os.path.join(OUTPUT_DIR, f'clusters_{window}day_2022-2024.txt')
     
     # Get all dates for this window
     dates = sorted(rolling_corrs[window].index.get_level_values(0).unique())
-    
-    # Build rows for CSV - ONE ROW PER DATE
-    rows = []
-    for date in dates:
-        clusters = all_clusters[(window, date)]
-        
-        # Format date
-        date_str = date.strftime('%Y-%m-%d') if hasattr(date, 'strftime') else str(date)
-        
-        # Format clusters as semicolon-separated groups
-        # Each cluster is comma-separated tickers, clusters separated by semicolons
-        # Example: "AAPL,MSFT,GOOGL;TSLA,GM;XOM,CVX;JPM"
-        if len(clusters) > 0:
-            cluster_str = ';'.join([','.join(cluster) for cluster in clusters])
-        else:
-            cluster_str = ''  # No clusters found
-        
-        rows.append({
-            'date': date_str,
-            'clusters': cluster_str
-        })
-    
-    # Create DataFrame and save
-    df = pd.DataFrame(rows)
-    df.to_csv(csv_file, index=False)
     
     # Calculate summary statistics
     all_cluster_counts = [len(all_clusters[(window, d)]) for d in dates]
@@ -310,11 +285,45 @@ for window in sorted(rolling_corrs.keys()):
         for cluster in all_clusters[(window, d)]:
             all_cluster_sizes.append(len(cluster))
     
-    print(f"✓ Saved {len(rows)} days of clusters to: {csv_file}")
-    print(f"  • Format: Each row = 1 date with all clusters for that day")
-    print(f"  • Clusters: Semicolon-separated (within cluster: comma-separated tickers)")
+    # Write to TXT file
+    with open(txt_file, 'w') as f:
+        # Header with summary
+        f.write("="*80 + "\n")
+        f.write(f"DAILY CLUSTERS - {window}-day Rolling Window\n")
+        f.write("="*80 + "\n\n")
+        f.write(f"Period: 2022-01-01 to 2024-12-31\n")
+        f.write(f"Total trading days: {len(dates)}\n")
+        f.write(f"Correlation threshold: {CORRELATION_THRESHOLD}\n\n")
+        f.write(f"SUMMARY STATISTICS:\n")
+        f.write(f"  • Avg clusters per day: {np.mean(all_cluster_counts):.2f}\n")
+        f.write(f"  • Std dev: {np.std(all_cluster_counts):.2f}\n")
+        f.write(f"  • Min/Max clusters: {min(all_cluster_counts)}/{max(all_cluster_counts)}\n")
+        if all_cluster_sizes:
+            f.write(f"  • Avg cluster size: {np.mean(all_cluster_sizes):.2f} stocks\n")
+            f.write(f"  • Largest cluster ever: {max(all_cluster_sizes)} stocks\n")
+        f.write("\n" + "="*80 + "\n")
+        f.write("DAILY CLUSTERS (one line per trading day)\n")
+        f.write("="*80 + "\n\n")
+        f.write("Format: YYYY-MM-DD [N clusters] | cluster1 | cluster2 | cluster3 | ...\n")
+        f.write("        (within each cluster, stocks are comma-separated)\n\n")
+        
+        # One line per date with clusters
+        for date in dates:
+            clusters = all_clusters[(window, date)]
+            date_str = date.strftime('%Y-%m-%d') if hasattr(date, 'strftime') else str(date)
+            num_clusters = len(clusters)
+            
+            # Format clusters
+            if len(clusters) > 0:
+                cluster_str = ' | '.join([','.join(cluster) for cluster in clusters])
+            else:
+                cluster_str = '(no clusters found)'
+            
+            f.write(f"{date_str} [{num_clusters} clusters] | {cluster_str}\n")
+    
+    print(f"✓ Saved {len(dates)} days of clusters to: {txt_file}")
+    print(f"  • Format: Summary at top, then ~750 lines (one per trading day)")
     print(f"  • Avg clusters per day: {np.mean(all_cluster_counts):.2f}")
-    print(f"  • Avg cluster size: {np.mean(all_cluster_sizes):.2f} stocks" if all_cluster_sizes else "  • Avg cluster size: N/A")
 
 # ============================================================
 # Generate Summary Reports

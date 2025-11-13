@@ -1,0 +1,70 @@
+================================================================================
+CLUSTER ANALYSIS SUMMARY - 30-day Rolling Window
+================================================================================
+
+Analysis Period: 2022-01-01 to 2024-12-31
+Correlation Threshold (δ): 0.6
+Method: MST + Threshold + Connected Components
+
+================================================================================
+OVERVIEW
+================================================================================
+
+Number of dates analyzed: 752
+Average clusters per date: 11.19
+Std deviation: 5.09
+Min/Max clusters: 1 / 20
+
+================================================================================
+EXAMPLE CLUSTERS (Most Recent Date)
+================================================================================
+
+Date: 2024-12-31
+Total clusters found: 11
+
+Largest clusters:
+
+Cluster 1 (8 stocks):
+  ABBV, DTE, ED, FAST, IBM, KMI, NOW, WM
+
+Cluster 2 (3 stocks):
+  ENPH, MGM, NXPI
+
+Cluster 3 (1 stocks):
+  ADM
+
+Cluster 4 (1 stocks):
+  EPAM
+
+Cluster 5 (1 stocks):
+  GD
+
+Cluster 6 (1 stocks):
+  HCA
+
+Cluster 7 (1 stocks):
+  HII
+
+Cluster 8 (1 stocks):
+  MPC
+
+Cluster 9 (1 stocks):
+  NCLH
+
+Cluster 10 (1 stocks):
+  XYL
+
+================================================================================
+INTERPRETATION
+================================================================================
+
+Clusters represent groups of stocks with correlation ≥ 0.6
+over the specified rolling window. These are likely:
+  • Sector-based groupings (e.g., tech stocks, utilities)
+  • Theme-based groupings (e.g., growth vs. value)
+  • Market regime indicators (more/fewer clusters = fragmentation/cohesion)
+
+Large clusters indicate broad market themes.
+Many small clusters indicate market fragmentation.
+Cluster stability over time indicates persistent themes.
+================================================================================
