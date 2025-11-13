@@ -1,0 +1,50 @@
+================================================================================
+JACCARD CLUSTER ANALYSIS SUMMARY - 10-day Rolling Window
+================================================================================
+
+Analysis Period: 2022-01-01 to 2024-12-31
+Correlation Threshold (neighborhoods): 0.6
+Method: Hierarchical Clustering (average linkage, mid-level cut)
+        - Jaccard distance between correlation neighborhoods
+        - Singletons merged into outliers group
+
+================================================================================
+OVERVIEW
+================================================================================
+
+Number of dates analyzed: 752
+Average clusters per date: 4.79
+Std deviation: 1.42
+Min/Max clusters: 1 / 9
+
+================================================================================
+EXAMPLE CLUSTERS (Most Recent Date)
+================================================================================
+
+Date: 2024-12-31
+Total clusters found: 3
+
+Largest clusters:
+
+Cluster 1 (14 stocks):
+  ADM, DTE, ED, ENPH, FAST, GD, HCA, KMI, MGM, NCLH, NOW, NXPI, WM, XYL
+
+Cluster 2 (2 stocks):
+  ABBV, MPC
+
+Cluster 3 (4 stocks):
+  EPAM, HII, IBM, ZTS
+
+================================================================================
+INTERPRETATION
+================================================================================
+
+Clusters are formed based on Jaccard distance between correlation neighborhoods.
+Two stocks are in same cluster if they have similar correlation patterns
+(i.e., their neighborhoods G_A and G_B have high overlap).
+
+This method is more robust than pairwise correlations because:
+  • Captures higher-order relationships
+  • Less sensitive to individual correlation noise
+  • Groups stocks with similar correlation structures
+================================================================================

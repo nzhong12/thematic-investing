@@ -1,29 +1,29 @@
 """
-Basic Correlation Threshold Clustering (Section 2.2 - Simple Approach)
-======================================================================
-
-METHOD: Basic correlation-based clustering with MST
-----------------------------------------------------
-This script uses PAIRWISE CORRELATIONS directly with a simple threshold:
-- If corr(A,B) ≥ δ → connect A–B directly
-- Uses MST-based clustering (threshold + connected components)
-
-DIFFERENCE FROM extract_clusters_jaccard.py:
----------------------------------------------
-THIS FILE:                Uses pairwise correlations + basic threshold
-                         Simple and fast, but sensitive to noise
-
-extract_clusters_jaccard.py:  Uses Jaccard distance + hierarchical clustering
-                              More robust, captures higher-order relationships
+Time Series Clustering Using MST
+=================================
+Implements clustering step from Section 2.2 of 'Time Series Clustering Using Graphs'.
 
 This script:
 1. Loads pre-computed correlation data from correlation_data.pkl
 2. For each rolling window (10, 30, 50 days) and each date:
    - Builds MST using distance metric: d_ij = sqrt(2 * (1 - corr_ij))
-   - Filters MST edges by correlation threshold (keeps only corr ≥ 0.6)
+   - Filters MST edges by correlation threshold (keeps only strong correlations)
    - Identifies connected components as market clusters/themes
-3. Saves clusters to outputs/corr_clusters.pkl
+3. Saves clusters to outputs/clusters.pkl
 4. Exports human-readable cluster summaries to outputs/corr_cluster_summary_*.txt
+
+MATHEMATICAL FOUNDATION (from Section 2.2):
+-------------------------------------------
+The paper defines clusters as:
+    G_A = { X | r_AX > δ }  (set of stocks correlated with A above threshold δ)
+    
+Distance between clusters A and B:
+    d(A,B) = 1 - |G_A ∩ G_B| / |G_A ∪ G_B|  (Jaccard distance)
+
+Our implementation approximates this by:
+1. Building MST to capture dominant correlation structure
+2. Thresholding MST edges at correlation ≥ δ (e.g., 0.6)
+3. Connected components in thresholded MST = market themes/clusters
 
 This is efficient because MST has only (n-1) edges instead of O(n²) pairwise correlations.
 

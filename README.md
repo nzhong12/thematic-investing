@@ -100,7 +100,8 @@ python scripts/extract_clusters.py
 |------|---------|---------|
 | **scripts/sp500_rolling_correlation.py** | **Data Download & Correlation Computation** | Connects to WRDS CRSP database, downloads S&P 500 stock data (2022-2024), computes 10/30/50-day rolling correlations, exports CSV time series and top 10 pairs analysis. Generates `correlation_data.pkl` for visualization. **Run this first!** |
 | **scripts/show_mst_only.py** | **MST Visualization** | Loads correlation data, creates Minimum Spanning Tree from correlation matrix, visualizes MST based on selected date and window size. Interactive navigation: ← → changes window (10/30/50 days), ↑ ↓ navigates through all ~750 trading days. Edge thickness/color = correlation strength. |
-| **scripts/extract_clusters.py** | **Cluster Extraction** | Loads correlation data, builds MST for each date, filters edges by correlation threshold (≥0.6), extracts connected components as clusters. Outputs ~750 daily cluster assignments per window to TXT files. **Run after sp500_rolling_correlation.py!** |
+| **scripts/extract_clusters.py** | **Basic Correlation Clustering** | Uses pairwise correlations with threshold-based clustering. Builds MST, filters edges where corr ≥ 0.6, extracts connected components. Simple and fast. Outputs: `corr_clusters_*.txt`, `corr_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |
+| **scripts/extract_clusters_jaccard.py** | **Jaccard + Hierarchical Clustering** | Uses Jaccard distance between correlation neighborhoods with hierarchical  clustering. More robust, captures higher-order relationships. Outputs: `jaccard_clusters_*.txt`, `jaccard_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |
 
 **Outputs Generated (in `scripts/outputs/`):**
 
@@ -112,14 +113,23 @@ python scripts/extract_clusters.py
 - `top10_correlations_30day.txt` - Top 10 pairs for 30-day window
 - `top10_correlations_50day.txt` - Top 10 pairs for 50-day window
 
-*Cluster Data:*
-- `clusters_10day_2022-2024.txt` - Daily clusters for 10-day window (~750 lines, one per trading day)
-- `clusters_30day_2022-2024.txt` - Daily clusters for 30-day window
-- `clusters_50day_2022-2024.txt` - Daily clusters for 50-day window
-- `cluster_summary_10day.txt` - Summary statistics and example clusters for 10-day window
-- `cluster_summary_30day.txt` - Summary for 30-day window
-- `cluster_summary_50day.txt` - Summary for 50-day window
-- `clusters.pkl` - Pickled dictionary with all cluster data
+*Cluster Data (Basic Correlation Method):*
+- `corr_clusters_10day_2022-2024.txt` - Daily clusters for 10-day window (~750 lines, one per trading day)
+- `corr_clusters_30day_2022-2024.txt` - Daily clusters for 30-day window
+- `corr_clusters_50day_2022-2024.txt` - Daily clusters for 50-day window
+- `corr_cluster_summary_10day.txt` - Summary statistics and example clusters for 10-day window
+- `corr_cluster_summary_30day.txt` - Summary for 30-day window
+- `corr_cluster_summary_50day.txt` - Summary for 50-day window
+- `corr_clusters.pkl` - Pickled dictionary with all cluster data
+
+*Cluster Data (Jaccard + Hierarchical Method):*
+- `jaccard_clusters_10day_2022-2024.txt` - Daily clusters for 10-day window using Jaccard distance
+- `jaccard_clusters_30day_2022-2024.txt` - Daily clusters for 30-day window
+- `jaccard_clusters_50day_2022-2024.txt` - Daily clusters for 50-day window
+- `jaccard_cluster_summary_10day.txt` - Summary statistics and example clusters
+- `jaccard_cluster_summary_30day.txt` - Summary for 30-day window
+- `jaccard_cluster_summary_50day.txt` - Summary for 50-day window
+- `jaccard_clusters.pkl` - Pickled dictionary with all cluster data
 
 ## Examples
 
@@ -197,22 +207,28 @@ python scripts/extract_clusters.py
 
 **✅ Completed (Section 2.2 from paper):**
 - Rolling correlation computation (10/30/50-day windows)
-- MST construction using distance metric: `d_ij = sqrt(2 * (1 - corr_ij))`
-- Edge filtering by correlation threshold (δ = 0.6)
-- Cluster extraction via connected components
-- Daily cluster assignments exported (~750 days per window)
+- **Method 1: Basic correlation threshold clustering** (`extract_clusters.py`)
+  - MST construction using distance metric: `d_ij = sqrt(2 * (1 - corr_ij))`
+  - Edge filtering by correlation threshold (δ = 0.6)
+  - Cluster extraction via connected components
+- **Method 2: Jaccard distance + hierarchical clustering** (`extract_clusters_jaccard.py`)
+  - Jaccard distance: `d(A,B) = 1 - |G_A ∩ G_B| / |G_A ∪ G_B|`
+  - Hierarchical clustering (agglomerative, average linkage, mid-level cut)
+  - Singleton clusters merged into 'outliers' group
+- Daily cluster assignments exported (~750 days per window) for both methods
 
 **🚧 Next Steps (Future Enhancements):**
 
-1. **Jaccard Distance Between Clusters (Section 2.2)**
-   - Implement: `d(A,B) = 1 - |G_A ∩ G_B| / |G_A ∪ G_B|`
-   - Measure similarity between clusters across time
-   - Build cluster evolution tree/dendrogram
+1. **Alternative Clustering Methods**
+   - Try different linkage methods (knn, single, ward, etc)
+   - Experiment with different dendrogram cut strategies
+   - Compare clustering quality metrics across methods
 
 2. **Cluster Stability Analysis**
    - Track how cluster composition changes over time
    - Identify persistent vs. transient themes
    - Measure cluster lifetime and transitions
+   - Compare stability between correlation vs. Jaccard methods
 
 3. **Time Series Distance Metrics (Section 2.3)**
    - Implement alternative distance measures beyond correlation
