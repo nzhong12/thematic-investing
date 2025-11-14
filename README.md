@@ -26,8 +26,19 @@ This project uses WRDS CRSP data to construct and visualize market theme cluster
 git clone https://github.com/nzhong12/thematic-investing.git
 cd thematic-investing
 
-# Install dependencies
+# Create and activate virtual environment (first time create and activate env)
+python3 -m venv .venv
+source .venv/bin/activate  # On macOS/Linux
+# OR on Windows: .venv\Scripts\activate
+
+# Install dependencies IN the virtual environment
 pip install -r requirements.txt
+```
+
+**Note:** If you restart your terminal or start a new session, always re-activate the virtual environment first:
+```bash
+cd thematic-investing
+source .venv/bin/activate  # Activate venv before running any scripts
 ```
 
 ### Configuration
@@ -58,6 +69,9 @@ Run the full analysis pipeline to compute correlations and visualize MST:
 ```bash
 # Navigate to the project directory
 cd thematic-investing
+
+# Activate virtual environment (if using venv)
+source .venv/bin/activate
 
 # Step 1: Download data and compute rolling correlations (ALWAYS RUN FIRST)
 python scripts/sp500_rolling_correlation.py
@@ -204,6 +218,7 @@ num_stocks = 50            # Change number of stocks (affects n×n correlation m
 Then run from project directory:
 ```bash
 cd thematic-investing
+source .venv/bin/activate  # Activate venv first
 python scripts/sp500_rolling_correlation.py
 python scripts/show_mst_only.py
 python scripts/extract_clusters_corr.py
