@@ -17,7 +17,7 @@ import seaborn as sns
 import wrds
 
 print("="*80)
-print("ROLLING CORRELATION ANALYSIS - 10 LARGE S&P STOCKS")
+print("ROLLING CORRELATION ANALYSIS - S&P 500 STOCKS")
 print("="*80)
 
 # ============================================================
@@ -27,10 +27,16 @@ print("\n" + "="*80)
 print("STEP 1: Getting S&P 500 stocks from WRDS")
 print("="*80)
 
-start_date = "2022-01-01"  # Start Jan 1, 2022 for full 3-year analysis
-end_date = "2024-12-31"    # End Dec 31, 2024
-num_stocks = 20
-print("NOTE: Selecting stocks with complete data history from 2022-2024 to ensure full 3-year analysis.")
+# ============================================================
+# OPTIMIZATION OPTIONS - Adjust for faster testing
+# ============================================================
+start_date = "2023-01-01"  # OPTIMIZED: 2023-2024 (2 years) instead of 2022-2024 (3 years)
+end_date = "2024-12-31"    # Reduces ~750 days to ~500 days
+num_stocks = 100           # 100 stocks for meaningful sector clustering (or use 50 for faster testing)
+
+print("⚡ OPTIMIZATION MODE: Using 2-year period (2023-2024) for faster processing")
+print("   To use full 3 years, change start_date to '2022-01-01' in script")
+print(f"\nNOTE: Selecting {num_stocks} stocks with complete data history to identify sector clusters.")
 
 print(f"\nDate range: {start_date} to {end_date}")
 print(f"Number of stocks to select: {num_stocks}")
@@ -52,7 +58,6 @@ sp500_query = """
         AND a.ending >= '{end_date}'
         AND b.ticker IS NOT NULL
     ORDER BY a.permno
-    LIMIT 100
 """.format(start_date=start_date, end_date=end_date)
 
 sp500_df = db.raw_sql(sp500_query)
@@ -112,11 +117,19 @@ print("\n📊 Sample of raw data:")
 print(df.head(10))
 
 # ============================================================
-# STEP 3: compute daily simple returns
+# STEP 3: Handle duplicates and compute daily simple returns
 # ============================================================
 print("\n" + "="*80)
 print("STEP 3: Computing daily simple returns")
 print("="*80)
+
+# Check for duplicates
+print("\n✓ Checking for duplicate (date, ticker) entries...")
+duplicates = df[df.duplicated(subset=['date', 'ticker'], keep=False)]
+if len(duplicates) > 0:
+    print(f"⚠️  Found {len(duplicates)} duplicate entries. Keeping last entry per (date, ticker).")
+    print(f"   Example duplicates:\n{duplicates.head()}")
+    df = df.drop_duplicates(subset=['date', 'ticker'], keep='last')
 
 # convert to pivot format (dates × tickers) for prices
 print("\n✓ Pivoting prices to wide format...")
@@ -289,6 +302,13 @@ for window in windows:
     time_series_df.to_csv(time_series_csv, index=False)
     print(f"✓ Saved full time series ({len(all_dates)} dates) to: {time_series_csv}")
     
+    # ============================================================
+    # COMMENTED OUT: TOP 10 ANALYSIS (Very slow with 100 stocks)
+    # ============================================================
+    # Skipping top 10 correlation pairs analysis to save time
+    # This section takes 5-10 minutes with 100 stocks
+    # Uncomment if you need the top10_correlations_*.txt files
+    """
     # TOP 10 MOST CORRELATED PAIRS (by magnitude) - ACROSS ENTIRE YEAR
     print(f"\n{'='*80}")
     print(f"TOP 10 MOST CORRELATED PAIRS (by magnitude) - {window}-day window")
@@ -455,10 +475,17 @@ for window in windows:
         print(f"   (This is common for longer windows like 50-day)")
     
     print(f"\n{'='*80}")
+    """
+    # END OF COMMENTED OUT TOP 10 ANALYSIS
+    print(f"\n⚡ OPTIMIZATION: Skipped top-10 and persistent correlation analysis")
 
 # ============================================================
-# STEP 5: Visualize correlation matrices
+# STEP 5 & 6: Visualizations (COMMENTED OUT - Too dense with 100 stocks)
 # ============================================================
+# ⚠️ VISUALIZATIONS SKIPPED: With 100 stocks, heatmaps are unreadable (100x100 matrices)
+# To enable visualizations, reduce num_stocks to 20-30 at top of script
+# Or use show_mst_only.py for better interactive visualization of relationships
+'''
 print("\n" + "="*80)
 print("STEP 5: Visualizing Correlation Matrices")
 print("="*80)
@@ -663,6 +690,10 @@ print(f"📊 Available dates: Last 10 trading days")
 print("\nShowing interactive plot...")
 
 plt.show(block=True)
+'''
+# END OF COMMENTED OUT VISUALIZATIONS (STEP 5 & 6)
+print("\n⚡ OPTIMIZATION: Skipped visualizations (too dense with 100 stocks)")
+print("   For visualizations, reduce num_stocks to 20-30, or use show_mst_only.py\n")
 
 # ============================================================
 # SUMMARY

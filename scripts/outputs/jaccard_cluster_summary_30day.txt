@@ -12,31 +12,49 @@ Method: Hierarchical Clustering (average linkage, mid-level cut)
 OVERVIEW
 ================================================================================
 
-Number of dates analyzed: 752
-Average clusters per date: 4.17
-Std deviation: 1.54
-Min/Max clusters: 1 / 9
+Number of dates analyzed: 501
+Average clusters per date: 11.18
+Std deviation: 3.65
+Min/Max clusters: 1 / 19
 
 ================================================================================
 EXAMPLE CLUSTERS (Most Recent Date)
 ================================================================================
 
 Date: 2024-12-31
-Total clusters found: 4
+Total clusters found: 13
 
 Largest clusters:
 
-Cluster 1 (9 stocks):
-  ADM, EPAM, GD, HCA, HII, MPC, NCLH, XYL, ZTS
+Cluster 1 (14 stocks):
+  BA, BMY, ETR, GD, GLW, HII, HON, HPQ, KEYS, KR, LW, MPC, MRK, NCLH
 
-Cluster 2 (2 stocks):
-  ED, KMI
+Cluster 2 (11 stocks):
+  AEP, CMS, DTE, ED, EIX, EVRG, FE, PEG, SO, WEC, XEL
 
-Cluster 3 (2 stocks):
-  ENPH, MGM
+Cluster 3 (4 stocks):
+  ALLE, CARR, CAT, IR
 
-Cluster 4 (7 stocks):
-  ABBV, DTE, FAST, IBM, NOW, NXPI, WM
+Cluster 4 (4 stocks):
+  CINF, DOV, FAST, FTV
+
+Cluster 5 (3 stocks):
+  PAYC, SYF, TXT
+
+Cluster 6 (2 stocks):
+  ADM, HCA
+
+Cluster 7 (2 stocks):
+  AEE, NEE
+
+Cluster 8 (2 stocks):
+  CHD, CL
+
+Cluster 9 (2 stocks):
+  DD, FMC
+
+Cluster 10 (2 stocks):
+  EMR, VMC
 
 ================================================================================
 INTERPRETATION

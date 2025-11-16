@@ -4,12 +4,19 @@ A Python research tool for analyzing evolving market themes using network graph 
 
 ## Overview
 
-This project uses WRDS CRSP data to construct and visualize market theme clusters through:
-- Rolling correlation analysis (10-, 30-, and 50-day windows)
-- Distance-weighted network graphs
-- Minimum spanning trees (MST)
-- Community detection algorithms
-- Interactive visualizations
+This project analyzes **rolling correlations** between S&P 500 stocks using **minimum spanning trees (MST)** and **graph-based clustering** methods. It pulls daily price data from **WRDS/CRSP**, computes correlations over multiple time windows, and identifies stock clusters representing potential market themes.
+
+**Key Features:**
+- Connects to WRDS database to fetch S&P 500 constituent prices (2023-2024, ~500 days)
+- Computes rolling correlations (10-day, 30-day, 50-day windows)
+- Constructs minimum spanning trees to reveal stock relationships
+- Implements two clustering methods:
+  - **Basic correlation threshold clustering** (MST + edge filtering + connected components)
+  - **Jaccard distance + hierarchical clustering** (robust to noise, captures higher-order relationships)
+- Exports daily cluster assignments for ~500 trading days
+- Identifies persistent vs. transient themes across time windows
+- Produces cluster composition frequency analysis (top 20 pairs, triplets, etc.)
+- Interactive visualizations for exploring correlation dynamics
 
 ## Quick Start
 
@@ -86,10 +93,10 @@ python scripts/extract_clusters_jaccard.py
 
 **What happens:**
 1. `scripts/sp500_rolling_correlation.py`:
-   - Downloads S&P 500 stock data from WRDS CRSP (2022-2024, stocks with complete history)
+   - Downloads 100 largest S&P 500 stocks from WRDS CRSP (2023-2024, ~500 trading days)
    - Computes rolling correlations for 10-, 30-, and 50-day windows
    - Saves results to `correlation_data.pkl`
-   - Exports CSV time series and top 10 correlation pairs
+   - Exports CSV time series (top-10 correlation analysis commented out for speed)
 
 2. `scripts/show_mst_only.py`:
    - Loads pre-computed correlation data from `correlation_data.pkl`
@@ -99,9 +106,10 @@ python scripts/extract_clusters_jaccard.py
 
 3. `scripts/extract_clusters_corr.py`:
    - Loads `correlation_data.pkl` generated in Step 1
-   - Builds MST for each date, filters by correlation ≥ 0.6, extracts clusters
+   - Builds MST for each date, filters by correlation ≥ 0.6 (tight sector clusters)
    - Uses basic pairwise correlation threshold method
-   - Outputs daily cluster assignments to TXT files (~750 days per window)
+   - Outputs daily cluster assignments to TXT files (~500 days per window)
+   - Shows top 20 most frequent cluster groups with [size=X] indicators
 
 4. `scripts/extract_clusters_jaccard.py`:
    - Loads `correlation_data.pkl` generated in Step 1
@@ -110,45 +118,41 @@ python scripts/extract_clusters_jaccard.py
    - Applies hierarchical clustering (agglomerative, average linkage, mid-level cut)
    - Merges singleton clusters into 'outliers' group
    - More robust than pairwise method, captures higher-order correlation patterns
-   - Outputs daily cluster assignments to TXT files (~750 days per window)
+   - Outputs daily cluster assignments to TXT files (~500 days per window)
+   - Shows top 20 most frequent cluster groups with [size=X] indicators
 
 ### Key Files Explained
 
 **Main Scripts:**
 
 | File | Purpose | Details |
-|------|---------|---------|
-| **scripts/sp500_rolling_correlation.py** | **Data Download & Correlation Computation** | Connects to WRDS CRSP database, downloads S&P 500 stock data (2022-2024), computes 10/30/50-day rolling correlations, exports CSV time series and top 10 pairs analysis. Generates `correlation_data.pkl` for visualization. **Run this first!** |
-| **scripts/show_mst_only.py** | **MST Visualization** | Loads correlation data, creates Minimum Spanning Tree from correlation matrix, visualizes MST based on selected date and window size. Interactive navigation: ← → changes window (10/30/50 days), ↑ ↓ navigates through all ~750 trading days. Edge thickness/color = correlation strength. |
-| **scripts/extract_clusters_corr.py** | **Basic Correlation Clustering** | Uses pairwise correlations with threshold-based clustering. Builds MST, filters edges where corr ≥ 0.6, extracts connected components. Simple and fast. Outputs: `corr_clusters_*.txt`, `corr_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |
-| **scripts/extract_clusters_jaccard.py** | **Jaccard + Hierarchical Clustering** | Computes correlation neighborhoods (G_A = {X \| r_AX > 0.6}), calculates Jaccard distance d(A,B) = 1 - \|G_A ∩ G_B\| / \|G_A ∪ G_B\|, applies hierarchical clustering (agglomerative, average linkage, mid-level cut). More robust, captures higher-order relationships. Merges singletons into 'outliers'. Outputs: `jaccard_clusters_*.txt`, `jaccard_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |
-
-**Outputs Generated (in `scripts/outputs/`):**
+|------|---------|---------|  
+| **scripts/sp500_rolling_correlation.py** | **Data Download & Correlation Computation** | Connects to WRDS CRSP database, downloads 100 largest S&P 500 stocks (2023-2024, ~500 trading days), computes 10/30/50-day rolling correlations, exports CSV time series. Generates `correlation_data.pkl` for visualization. Top-10 analysis and visualizations commented out for speed. **Run this first!** |
+| **scripts/show_mst_only.py** | **MST Visualization** | Loads correlation data, creates Minimum Spanning Tree from correlation matrix, visualizes MST based on selected date and window size. Interactive navigation: ← → changes window (10/30/50 days), ↑ ↓ navigates through all ~500 trading days. Edge thickness/color = correlation strength. |
+| **scripts/extract_clusters_corr.py** | **Basic Correlation Clustering** | Uses pairwise correlations with threshold-based clustering. Builds MST, filters edges where corr ≥ 0.6, extracts connected components. Simple and fast. Shows top 20 cluster groups with [size=X]. Outputs: `corr_clusters_*.txt`, `corr_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |
+| **scripts/extract_clusters_jaccard.py** | **Jaccard + Hierarchical Clustering** | Computes correlation neighborhoods (G_A = {X \| r_AX > 0.6}), calculates Jaccard distance d(A,B) = 1 - \|G_A ∩ G_B\| / \|G_A ∪ G_B\|, applies hierarchical clustering (agglomerative, average linkage, mid-level cut). More robust, captures higher-order relationships. Merges singletons into 'outliers'. Shows top 20 cluster groups. Outputs: `jaccard_clusters_*.txt`, `jaccard_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |**Outputs Generated (in `scripts/outputs/`):**
 
 *Correlation Data:*
-- `correlation_10day_2022-2024.csv` - Time series: rows=dates,columns=stock pairs, values=10-day rolling correlations
-- `correlation_30day_2022-2024.csv` - Time series: 30-day rolling correlations
-- `correlation_50day_2022-2024.csv` - Time series: 50-day rolling correlations
-- `top10_correlations_10day.txt` - Top 10 most correlated pairs for 10-day window (avg, std dev, range)
-- `top10_correlations_30day.txt` - Top 10 pairs for 30-day window
-- `top10_correlations_50day.txt` - Top 10 pairs for 50-day window
+- `correlation_10day_2023-2024.csv` - Time series: rows=dates,columns=stock pairs, values=10-day rolling correlations
+- `correlation_30day_2023-2024.csv` - Time series: 30-day rolling correlations (~500 trading days)
+- `correlation_50day_2023-2024.csv` - Time series: 50-day rolling correlations
+- Note: Top-10 correlation pair analysis is commented out by default for faster processing with 100 stocks
 
 *Cluster Data (Basic Correlation Method):*
-- `corr_clusters_10day_2022-2024.txt` - Daily clusters for 10-day window (~750 lines, one per trading day)
-- `corr_clusters_30day_2022-2024.txt` - Daily clusters for 30-day window
-- `corr_clusters_50day_2022-2024.txt` - Daily clusters for 50-day window
-- `corr_cluster_summary_10day.txt` - Summary statistics and example clusters for 10-day window
-- `corr_cluster_summary_30day.txt` - Summary for 30-day window
+- `corr_clusters_30day_2023-2024.txt` - Daily clusters for 30-day window (~500 lines, one per trading day)
+- `corr_clusters_50day_2023-2024.txt` - Daily clusters for 50-day window
+- `corr_cluster_summary_30day.txt` - Summary statistics, top 20 cluster groups with [size=X], example clusters
 - `corr_cluster_summary_50day.txt` - Summary for 50-day window
 - `corr_clusters.pkl` - Pickled dictionary with all cluster data
+- Note: 10-day window skipped by default (SKIP_10DAY=True) for 33% speedup
 
 *Cluster Data (Jaccard + Hierarchical Method):*
-- `jaccard_clusters_10day_2022-2024.txt` - Daily clusters for 10-day window using Jaccard distance
-- `jaccard_clusters_30day_2022-2024.txt` - Daily clusters for 30-day window
-- `jaccard_clusters_50day_2022-2024.txt` - Daily clusters for 50-day window
-- `jaccard_cluster_summary_10day.txt` - Summary statistics and example clusters
-- `jaccard_cluster_summary_30day.txt` - Summary for 30-day window
+- `jaccard_clusters_30day_2023-2024.txt` - Daily clusters for 30-day window using Jaccard distance (~500 days)
+- `jaccard_clusters_50day_2023-2024.txt` - Daily clusters for 50-day window
+- `jaccard_cluster_summary_30day.txt` - Summary statistics, top 20 cluster groups with [size=X], example clusters
 - `jaccard_cluster_summary_50day.txt` - Summary for 50-day window
+- `jaccard_clusters.pkl` - Pickled dictionary with all cluster data
+- Note: 10-day window skipped by default (SKIP_10DAY=True)
 - `jaccard_clusters.pkl` - Pickled dictionary with all cluster data
 
 ## Examples
@@ -163,29 +167,29 @@ $ cd thematic-investing
 $ python scripts/sp500_rolling_correlation.py
 
 ================================================================================
-ROLLING CORRELATION ANALYSIS - 10 LARGE S&P STOCKS
+ROLLING CORRELATION ANALYSIS - S&P 500 STOCKS
 ================================================================================
 Connecting to WRDS...
 ✓ Querying S&P 500 constituents...
 ✓ Found 503 S&P 500 stocks
 
-✓ Selecting 20 largest stocks by market cap...
+✓ Selecting 100 largest stocks by market cap...
 Selected stocks: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', ...]
 
 ✓ Querying daily prices from CRSP...
-✓ Downloaded 252 trading days of data
+✓ Downloaded ~500 trading days of data (2023-2024)
 
 STEP 2: Computing Rolling Correlations
 ✓ Computing 10-day rolling correlation...
 ✓ Computing 30-day rolling correlation...
 ✓ Computing 50-day rolling correlation...
 
-STEP 3: Interactive Visualization
-✓ Showing correlation matrix for 30-day window...
-[Interactive heatmap appears]
-
+STEP 3: Export Data
 ✓ Saved to correlation_data.pkl
-✓ Data exported - other scripts can now use 'rolling_corrs' and 'tickers'
+✓ Exported correlation CSV files
+✓ Data ready - other scripts can now use 'rolling_corrs' and 'tickers'
+
+Note: Top-10 analysis and visualizations skipped by default with 100 stocks
 ```
 
 ```bash
@@ -194,11 +198,11 @@ $ python scripts/show_mst_only.py
 
 Loading correlation data...
 ✓ Loaded rolling_corrs with 3 windows: [10, 30, 50]
-✓ Loaded 20 tickers
+✓ Loaded 100 tickers
 
 Latest date in data: 2024-12-31
 Building MST for 30-day window...
-✓ MST built successfully - 19 edges connecting 20 nodes
+✓ MST built successfully - 99 edges connecting 100 nodes
 ✓ Showing MST visualization...
 [Interactive MST graph appears]
 
@@ -210,9 +214,11 @@ Building MST for 30-day window...
 Edit parameters in `scripts/sp500_rolling_correlation.py`:
 
 ```python
-start_date = "2022-01-01"  # Change date range to whatever you want
-end_date = "2024-12-31"
-num_stocks = 50            # Change number of stocks (affects n×n correlation matrix)
+start_date = "2023-01-01"  # Current default: 2023-2024 (~500 days)
+end_date = "2024-12-31"    # Use "2022-01-01" for 3 years (~750 days, ~30% slower)
+num_stocks = 100           # Current default: 100 for meaningful sector clusters
+                           # Note: 100 stocks = better clustering but dense visualizations
+                           # Use 20-30 stocks for readable heatmaps, or use show_mst_only.py
 ```
 
 Then run from project directory:
@@ -224,6 +230,54 @@ python scripts/show_mst_only.py
 python scripts/extract_clusters_corr.py
 python scripts/extract_clusters_jaccard.py
 ```
+
+## Performance Optimization Options
+
+For faster testing and development, several optimization flags are available:
+
+**In `sp500_rolling_correlation.py`:**
+```python
+# Date range (line ~22-23)
+start_date = "2023-01-01"  # Default: 2023-01-01 (2 years)
+end_date = "2024-12-31"    # Use "2022-01-01" for 3 years (~30% slower)
+
+# Stock count (line ~24)
+num_stocks = 100            # Default: 100 for meaningful sector clusters
+                            # Use 20-30 for readable heatmap visualizations
+                            # Visualizations commented out by default with 100 stocks
+
+# Optimization note: Top-10 correlation analysis and visualizations are
+# commented out by default (~10-15 min savings with 100 stocks).
+# Use show_mst_only.py for better visualization of stock relationships.
+```
+
+**In `extract_clusters_corr.py` and `extract_clusters_jaccard.py`:**
+```python
+# Skip 10-day window (line ~70)
+SKIP_10DAY = True          # Default: True (saves ~33% time)
+                           # Set False to include 10-day rolling window
+
+# Date sampling for fast testing (line ~72)
+DATE_SAMPLING = 1          # Default: 1 (process all dates)
+                           # Set to 10 for quick testing (10x faster)
+
+# Correlation threshold (line ~55)
+CORRELATION_THRESHOLD = 0.6  # Default: 0.6 (high correlation, tight sectors)
+                             # Produces 30-54 clusters per day
+                             # Higher = fewer/smaller clusters
+                             # Lower = larger/mega-clusters
+                             # Top 20 cluster groups shown with [size=X] indicators
+```
+
+**Expected Runtimes (100 stocks, 2 years, SKIP_10DAY=True):**
+- `sp500_rolling_correlation.py`: ~10-12 minutes (visualizations skipped)
+- `extract_clusters_corr.py`: ~2-3 minutes
+- `extract_clusters_jaccard.py`: ~12-15 minutes
+- **Total pipeline**: ~25-30 minutes
+
+**Fast Testing Mode (DATE_SAMPLING=10):**
+- `extract_clusters_corr.py`: ~15-20 seconds
+- `extract_clusters_jaccard.py`: ~1-2 minutes
 
 ## Current Implementation Status
 
@@ -237,7 +291,8 @@ python scripts/extract_clusters_jaccard.py
   - Jaccard distance: `d(A,B) = 1 - |G_A ∩ G_B| / |G_A ∪ G_B|`
   - Hierarchical clustering (agglomerative, average linkage, mid-level cut)
   - Singleton clusters merged into 'outliers' group
-- Daily cluster assignments exported (~750 days per window) for both methods
+- Daily cluster assignments exported (~500 days per window) for both methods
+- Top 20 most frequent cluster groups shown with size indicators
 
 **🚧 Next Steps (Future Enhancements):**
 
@@ -257,12 +312,7 @@ python scripts/extract_clusters_jaccard.py
    - DTW (Dynamic Time Warping) for non-linear alignment
    - Compare clustering results across distance metrics
 
-4. **Hierarchical Clustering**
-   - Apply agglomerative clustering using Jaccard distances
-   - Build multi-level cluster hierarchy
-   - Identify meta-themes (clusters of clusters)
-
-5. **Portfolio Applications**
+4. **Portfolio Applications**
    - Theme-based portfolio construction from clusters
    - Backtest cluster rotation strategies
    - Risk analysis using cluster stability metrics

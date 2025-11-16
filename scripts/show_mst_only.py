@@ -53,7 +53,7 @@ current_window_idx = windows.index(30) if 30 in windows else 0
 
 # Get available dates (ALL dates - no limit, can navigate through entire dataset)
 all_dates = rolling_corrs[windows[current_window_idx]].index.get_level_values(0).unique()
-available_dates = sorted(all_dates)  # All dates from 2022-2024 (~750 trading days)
+available_dates = sorted(all_dates)  # All dates from 2023-2024 (~500 trading days)
 current_date_idx = len(available_dates) - 1  # Start with most recent
 
 # ============================================================
@@ -231,7 +231,9 @@ def visualize_mst(mst, corr_matrix, window, date):
     
     # Calculate which date this is (out of how many total trading days)
     # Note: available_dates contains ALL dates in the dataset (2022-2024)
-    # You can navigate through the entire ~750 trading days using arrow keys
+        # Navigation state - you can navigate across ALL available dates
+    # You can navigate through the entire ~500 trading days using arrow keys
+    # No 10-date limit - full dataset navigation enabled
     date_num = current_date_idx + 1  # Current position in dataset
     total_dates = len(available_dates)  # Total trading days in dataset
     
@@ -299,7 +301,7 @@ def update_plot():
 # ============================================================
 print("\nControls:")
 print("  ← → : Switch between 10/30/50-day windows")
-print("  ↑ ↓ : Navigate through ALL dates in dataset (~750 trading days)")
+print("  ↑ ↓ : Navigate through ALL dates in dataset (~500 trading days)")
 print("  Q/Esc: Quit")
 
 fig, ax = plt.subplots(figsize=(16, 12))

@@ -3,35 +3,38 @@ CLUSTER ANALYSIS SUMMARY - 10-day Rolling Window
 ================================================================================
 
 Analysis Period: 2022-01-01 to 2024-12-31
-Correlation Threshold (δ): 0.6
+Correlation Threshold (δ): 0.52
 Method: MST + Threshold + Connected Components
 
 ================================================================================
 OVERVIEW
 ================================================================================
 
-Number of dates analyzed: 752
-Average clusters per date: 4.73
-Std deviation: 3.20
-Min/Max clusters: 1 / 20
+Number of dates analyzed: 501
+Average clusters per date: 3.49
+Std deviation: 13.08
+Min/Max clusters: 1 / 100
 
 ================================================================================
 EXAMPLE CLUSTERS (Most Recent Date)
 ================================================================================
 
 Date: 2024-12-31
-Total clusters found: 1
+Total clusters found: 2
 
 Largest clusters:
 
-Cluster 1 (20 stocks):
-  ABBV, ADM, DTE, ED, ENPH, EPAM, FAST, GD, HCA, HII, IBM, KMI, MGM, MPC, NCLH, NOW, NXPI, WM, XYL, ZTS
+Cluster 1 (99 stocks):
+  AAPL, ABBV, ADM, AEE, AEP, ALLE, AMGN, BA, BMY, CAH, CARR, CAT, CDW, CEG, CHD, CINF, CL, CMS, CNP, COP, CTVA, DD, DE, DOV, DOW, DTE, ED, EIX, EMR, ENPH, EPAM, EQT, ETN, ETR, EVRG, FAST, FE, FMC, FTV, GD, GIS, GLW, HAL, HCA, HII, HLT, HON, HPQ, HSY, HWM, IBM, INVH, IR, JNJ, KDP, KEYS, KHC, KMB, KMI, KR, L, LHX, LMT, LW, MGM, MO, MPC, MRK, MRNA, MSI, NCLH, NEE, NOC, NOW, NXPI, OKE, OTIS, PAYC, PCG, PEG, PEP, PFE, PG, PPG, PYPL, SLB, SO, SYF, TXN, TXT, VICI, VMC, VTRS, WEC, WM, WRB, XEL, XYL, ZTS
+
+Cluster 2 (1 stocks):
+  EXC
 
 ================================================================================
 INTERPRETATION
 ================================================================================
 
-Clusters represent groups of stocks with correlation ≥ 0.6
+Clusters represent groups of stocks with correlation ≥ 0.52
 over the specified rolling window. These are likely:
   • Sector-based groupings (e.g., tech stocks, utilities)
   • Theme-based groupings (e.g., growth vs. value)

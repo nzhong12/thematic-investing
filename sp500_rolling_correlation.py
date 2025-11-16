@@ -29,7 +29,7 @@ print("="*80)
 
 start_date = "2022-01-01"  # Start Jan 1, 2024 (need enough history for 50-day rolling)
 end_date = "2024-12-31"    # Request through Oct 2025 (will get whatever is available in WRDS)
-num_stocks = 20
+num_stocks = 100
 print("NOTE: WRDS/CRSP data typically has a lag. If 2025 data is unavailable, will use most recent available.")
 
 print(f"\nDate range: {start_date} to {end_date}")

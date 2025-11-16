@@ -57,10 +57,18 @@ from datetime import datetime
 # ============================================================
 # Configuration
 # ============================================================
-CORRELATION_THRESHOLD = 0.6  # Minimum correlation to keep in cluster (δ in paper)
+CORRELATION_THRESHOLD = 0.52  # Minimum correlation to keep in cluster (δ in paper)
+                              # 0.52 = moderate-high correlation for balanced cluster sizes
 INPUT_FILE = 'correlation_data.pkl'
 OUTPUT_DIR = 'outputs'  # Relative to scripts/ folder where this file is located
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, 'corr_clusters.pkl')
+
+# ============================================================
+# OPTIMIZATION OPTIONS - Adjust for faster testing
+# ============================================================
+SKIP_10DAY = True          # Skip 10-day window (faster, less useful anyway)
+DATE_SAMPLING = 1          # Process every Nth date (1=all, 10=every 10th, etc.)
+                           # Set to 10 for fast testing, 1 for production
 
 print("="*80)
 print("TIME SERIES CLUSTERING USING MST")
@@ -220,6 +228,11 @@ for window in sorted(rolling_corrs.keys()):
     corr_df = rolling_corrs[window]
     dates = sorted(corr_df.index.get_level_values(0).unique())
     
+    # Apply date sampling if enabled
+    if DATE_SAMPLING > 1:
+        dates = dates[::DATE_SAMPLING]
+        print(f"⚡ OPTIMIZATION: Sampling every {DATE_SAMPLING}th date ({len(dates)} dates total)")
+    
     print(f"Analyzing {len(dates)} dates...")
     
     for i, date in enumerate(dates):
@@ -285,6 +298,17 @@ for window in sorted(rolling_corrs.keys()):
         for cluster in all_clusters[(window, d)]:
             all_cluster_sizes.append(len(cluster))
     
+    # Calculate cluster composition frequencies
+    from collections import Counter
+    cluster_compositions = []
+    for d in dates:
+        for cluster in all_clusters[(window, d)]:
+            cluster_tuple = tuple(sorted(cluster))  # Sort for consistent comparison
+            cluster_compositions.append(cluster_tuple)
+    
+    composition_counts = Counter(cluster_compositions)
+    total_days = len(dates)
+    
     # Write to TXT file
     with open(txt_file, 'w') as f:
         # Header with summary
@@ -301,6 +325,28 @@ for window in sorted(rolling_corrs.keys()):
         if all_cluster_sizes:
             f.write(f"  • Avg cluster size: {np.mean(all_cluster_sizes):.2f} stocks\n")
             f.write(f"  • Largest cluster ever: {max(all_cluster_sizes)} stocks\n")
+        
+        # Most frequent cluster compositions (only show multi-stock clusters)
+        f.write(f"\n" + "="*80 + "\n")
+        f.write(f"MOST FREQUENT MULTI-STOCK CLUSTER COMPOSITIONS\n")
+        f.write(f"="*80 + "\n\n")
+        f.write(f"Top 20 cluster groups (size ≥ 2) that appear most often across all {total_days} trading days:\n")
+        f.write(f"(Singletons excluded - they represent stocks not clustering with others)\n\n")
+        
+        # Filter to only show clusters with 2+ stocks
+        multi_stock_clusters = [(cluster, freq) for cluster, freq in composition_counts.most_common() 
+                                 if len(cluster) >= 2]
+        
+        if len(multi_stock_clusters) == 0:
+            f.write("No multi-stock clusters found. All stocks appear as singletons.\n")
+            f.write("Consider lowering CORRELATION_THRESHOLD to form more clusters.\n")
+        else:
+            for i, (cluster_tuple, freq) in enumerate(multi_stock_clusters[:20], 1):
+                cluster_str = ', '.join(cluster_tuple)
+                cluster_size = len(cluster_tuple)
+                percentage = (freq / total_days) * 100
+                f.write(f"{i}. ({cluster_str}) [size={cluster_size}]: {freq}/{total_days} days ({percentage:.1f}%)\n")
+        
         f.write("\n" + "="*80 + "\n")
         f.write("DAILY CLUSTERS (one line per trading day)\n")
         f.write("="*80 + "\n\n")

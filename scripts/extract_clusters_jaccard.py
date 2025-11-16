@@ -52,8 +52,16 @@ from scipy.spatial.distance import squareform
 # Configuration
 # ============================================================
 CORR_THRESHOLD = 0.6      # For defining neighborhoods: G_A = {X | r_AX > 0.6}
+                          # 0.6 = high correlation for tight, meaningful neighborhoods
 INPUT_FILE = 'correlation_data.pkl'
 OUTPUT_DIR = 'outputs'
+
+# ============================================================
+# OPTIMIZATION OPTIONS - Adjust for faster testing
+# ============================================================
+SKIP_10DAY = True          # Skip 10-day window (faster, less useful anyway)
+DATE_SAMPLING = 1          # Process every Nth date (1=all, 10=every 10th for fast testing)
+                           # Jaccard is SLOW with 100 stocks - use DATE_SAMPLING=10 for testing
 
 print("="*80)
 print("JACCARD DISTANCE-BASED CLUSTERING (HIERARCHICAL)")
@@ -224,13 +232,25 @@ print("="*80)
 all_clusters = {}
 cluster_stats = defaultdict(list)
 
-for window in sorted(rolling_corrs.keys()):
+# Apply optimization: skip 10-day window if enabled
+windows_to_process = [w for w in sorted(rolling_corrs.keys()) if not (SKIP_10DAY and w == 10)]
+if SKIP_10DAY and 10 in rolling_corrs.keys():
+    print("\n⚡ OPTIMIZATION: Skipping 10-day window (set SKIP_10DAY=False to include)")
+if DATE_SAMPLING > 1:
+    print(f"⚡ OPTIMIZATION: Sampling every {DATE_SAMPLING}th date (set DATE_SAMPLING=1 for all dates)")
+
+for window in windows_to_process:
     print(f"\n{'='*80}")
     print(f"Processing {window}-day Rolling Window")
     print(f"{'='*80}")
     
     corr_df = rolling_corrs[window]
     dates = sorted(corr_df.index.get_level_values(0).unique())
+    
+    # Apply date sampling if enabled
+    if DATE_SAMPLING > 1:
+        dates = dates[::DATE_SAMPLING]
+        print(f"⚡ Using sampled dates: {len(dates)} dates (every {DATE_SAMPLING}th)")
     
     print(f"Analyzing {len(dates)} dates...")
     
@@ -277,7 +297,7 @@ print(f"✓ Saved {len(all_clusters)} cluster snapshots to pickle")
 
 # Export daily clusters to TXT files
 print("\nExporting clusters to TXT files...")
-for window in sorted(rolling_corrs.keys()):
+for window in windows_to_process:
     txt_file = os.path.join(OUTPUT_DIR, f'jaccard_clusters_{window}day_2022-2024.txt')
     
     dates = sorted(rolling_corrs[window].index.get_level_values(0).unique())
@@ -288,6 +308,17 @@ for window in sorted(rolling_corrs.keys()):
     for d in dates:
         for cluster in all_clusters[(window, d)]:
             all_cluster_sizes.append(len(cluster))
+    
+    # Calculate cluster composition frequencies
+    from collections import Counter
+    cluster_compositions = []
+    for d in dates:
+        for cluster in all_clusters[(window, d)]:
+            cluster_tuple = tuple(sorted(cluster))  # Sort for consistent comparison
+            cluster_compositions.append(cluster_tuple)
+    
+    composition_counts = Counter(cluster_compositions)
+    total_days = len(dates)
     
     with open(txt_file, 'w') as f:
         # Header
@@ -306,6 +337,28 @@ for window in sorted(rolling_corrs.keys()):
         if all_cluster_sizes:
             f.write(f"  • Avg cluster size: {np.mean(all_cluster_sizes):.2f} stocks\n")
             f.write(f"  • Largest cluster ever: {max(all_cluster_sizes)} stocks\n")
+        
+        # Most frequent cluster compositions (only show multi-stock clusters)
+        f.write(f"\n" + "="*80 + "\n")
+        f.write(f"MOST FREQUENT MULTI-STOCK CLUSTER COMPOSITIONS\n")
+        f.write(f"="*80 + "\n\n")
+        f.write(f"Top 20 cluster groups (size ≥ 2) that appear most often across all {total_days} trading days:\n")
+        f.write(f"(Singletons excluded - they represent stocks not clustering with others)\n\n")
+        
+        # Filter to only show clusters with 2+ stocks
+        multi_stock_clusters = [(cluster, freq) for cluster, freq in composition_counts.most_common() 
+                                 if len(cluster) >= 2]
+        
+        if len(multi_stock_clusters) == 0:
+            f.write("No multi-stock clusters found. All stocks appear as singletons.\n")
+            f.write("Consider lowering CORR_THRESHOLD to form more clusters.\n")
+        else:
+            for i, (cluster_tuple, freq) in enumerate(multi_stock_clusters[:20], 1):
+                cluster_str = ', '.join(cluster_tuple)
+                cluster_size = len(cluster_tuple)
+                percentage = (freq / total_days) * 100
+                f.write(f"{i}. ({cluster_str}) [size={cluster_size}]: {freq}/{total_days} days ({percentage:.1f}%)\n")
+        
         f.write("\n" + "="*80 + "\n")
         f.write("DAILY CLUSTERS (one line per trading day)\n")
         f.write("="*80 + "\n\n")
@@ -330,7 +383,7 @@ for window in sorted(rolling_corrs.keys()):
 # Generate summary reports
 print("\nGenerating summary reports...")
 
-for window in sorted(rolling_corrs.keys()):
+for window in windows_to_process:
     output_file = os.path.join(OUTPUT_DIR, f'jaccard_cluster_summary_{window}day.txt')
     
     with open(output_file, 'w') as f:
@@ -399,19 +452,19 @@ print("="*80)
 
 print(f"\nTotal cluster snapshots: {len(all_clusters)}")
 print(f"\nCluster statistics by window:")
-for window in sorted(rolling_corrs.keys()):
+for window in windows_to_process:
     avg_clusters = np.mean(cluster_stats[window])
     std_clusters = np.std(cluster_stats[window])
     print(f"  • {window}-day: {avg_clusters:.1f} ± {std_clusters:.1f} clusters per date")
 
 print(f"\nOutputs saved to:")
 print(f"  • {os.path.join(OUTPUT_DIR, 'jaccard_clusters.pkl')}")
-for window in sorted(rolling_corrs.keys()):
+for window in windows_to_process:
     print(f"  • {os.path.join(OUTPUT_DIR, f'jaccard_clusters_{window}day_2022-2024.txt')}")
     print(f"  • {os.path.join(OUTPUT_DIR, f'jaccard_cluster_summary_{window}day.txt')}")
 
 print("\n✓ Done!")
 print("\nNext steps:")
 print("  • Compare with correlation-based clusters (extract_clusters.py)")
-print("  • Analyze cluster stability over time")
-print("  • Compare Jaccard vs correlation clustering approaches")
+print("  • Analyze cluster stability over time (2.3 of paper)")
+print("  • More next steps in ReadMe and paper sections after 2.2")
