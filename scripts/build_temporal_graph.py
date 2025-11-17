@@ -6,9 +6,9 @@ print("Loading Jaccard clusters...")
 with open("outputs/jaccard_clusters.pkl", "rb") as f:
     cluster_data = pickle.load(f)
 
-# Correct structure
+
 windows = cluster_data["windows"]         # [10,30,50]
-clusters_all = cluster_data["clusters"]   # dict: window → date → clusters list
+clusters_all = cluster_data["clusters"]   
 
 print(f"Loaded windows: {windows}")
 print("Building temporal cluster graph...\n")
@@ -18,9 +18,8 @@ G = nx.DiGraph()
 cluster_ids = {}
 node_counter = 0
 
-# ---------------------------
-# BUILD NODES
-# ---------------------------
+
+
 for window in windows:
     for date, cluster_list in clusters_all[window].items():
 
@@ -43,9 +42,7 @@ for window in windows:
 print("Nodes built.")
 
 
-# ---------------------------
-# BUILD EDGES BASED ON OVERLAP
-# ---------------------------
+
 print("Adding temporal edges...")
 
 for window in windows:
@@ -75,9 +72,6 @@ for window in windows:
 print("Temporal edges added.")
 
 
-# ---------------------------
-# SAVE GRAPH
-# ---------------------------
 print("\nSaving temporal cluster graph...")
 
 with open("outputs/temporal_cluster_graph.gpickle", "wb") as f:
