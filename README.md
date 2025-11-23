@@ -130,7 +130,18 @@ python scripts/extract_clusters_jaccard.py
 | **scripts/sp500_rolling_correlation.py** | **Data Download & Correlation Computation** | Connects to WRDS CRSP database, downloads 100 largest S&P 500 stocks (2023-2024, ~500 trading days), computes 10/30/50-day rolling correlations, exports CSV time series. Generates `correlation_data.pkl` for visualization. Top-10 analysis and visualizations commented out for speed. **Run this first!** |
 | **scripts/show_mst_only.py** | **MST Visualization** | Loads correlation data, creates Minimum Spanning Tree from correlation matrix, visualizes MST based on selected date and window size. Interactive navigation: ← → changes window (10/30/50 days), ↑ ↓ navigates through all ~500 trading days. Edge thickness/color = correlation strength. |
 | **scripts/extract_clusters_corr.py** | **Basic Correlation Clustering** | Uses pairwise correlations with threshold-based clustering. Builds MST, filters edges where corr ≥ 0.6, extracts connected components. Simple and fast. Shows top 20 cluster groups with [size=X]. Outputs: `corr_clusters_*.txt`, `corr_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |
-| **scripts/extract_clusters_jaccard.py** | **Jaccard + Hierarchical Clustering** | Computes correlation neighborhoods (G_A = {X \| r_AX > 0.6}), calculates Jaccard distance d(A,B) = 1 - \|G_A ∩ G_B\| / \|G_A ∪ G_B\|, applies hierarchical clustering (agglomerative, average linkage, mid-level cut). More robust, captures higher-order relationships. Merges singletons into 'outliers'. Shows top 20 cluster groups. Outputs: `jaccard_clusters_*.txt`, `jaccard_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |**Outputs Generated (in `scripts/outputs/`):**
+| **scripts/extract_clusters_jaccard.py** | **Jaccard + Hierarchical Clustering** | Computes correlation neighborhoods (G_A = {X \| r_AX > 0.6}), calculates Jaccard distance d(A,B) = 1 - \|G_A ∩ G_B\| / \|G_A ∪ G_B\|, applies hierarchical clustering (agglomerative, average linkage, mid-level cut). More robust, captures higher-order relationships. Merges singletons into 'outliers'. Shows top 20 cluster groups. Outputs: `jaccard_clusters_*.txt`, `jaccard_cluster_summary_*.txt`. **Run after sp500_rolling_correlation.py!** |
+| **scripts/temporal_clusters.py** | **Temporal Graph of Clusters (TGC)** | Constructs a temporal graph of clusters (Section 2.3 of the paper) from the Jaccard clustering results. Each node is a multi-stock cluster at a given time, and edges connect clusters across adjacent days based on member overlap. Outputs: `temporal_nodes.csv`, `temporal_edges.csv` for downstream temporal analysis and visualization. |
+
+## Results Summary: FINDINGS.md
+
+After running the clustering scripts, a concise summary of the main results and recurring stock themes is provided in `FINDINGS.md` at the project root. This file highlights:
+- Key statistics for both clustering methods (Jaccard and correlation-based)
+- The most frequent and stable sector groupings (e.g., utilities, consumer staples, energy, defense)
+- Example cluster compositions and their persistence
+- Interpretation of market structure and clustering quality
+
+**Outputs Generated (in `scripts/outputs/`):**
 
 *Correlation Data:*
 - `correlation_10day_2023-2024.csv` - Time series: rows=dates,columns=stock pairs, values=10-day rolling correlations
@@ -153,7 +164,11 @@ python scripts/extract_clusters_jaccard.py
 - `jaccard_cluster_summary_50day.txt` - Summary for 50-day window
 - `jaccard_clusters.pkl` - Pickled dictionary with all cluster data
 - Note: 10-day window skipped by default (SKIP_10DAY=True)
-- `jaccard_clusters.pkl` - Pickled dictionary with all cluster data
+
+*Temporal Cluster Graph Outputs:*
+- `temporal_nodes.csv` - Nodes: each multi-stock cluster at a given time (window=50 by default)
+- `temporal_edges.csv` - Edges: directed, weighted by overlap between clusters on adjacent days
+- These files enable downstream analysis of cluster evolution, persistence, and transitions over time
 
 ## Examples
 

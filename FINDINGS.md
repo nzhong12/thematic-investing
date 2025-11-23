@@ -28,7 +28,9 @@ Another recurring theme was **Consumer Staples**, with pairs like Colgate-Palmol
 
 These repeated groupings show that the clustering method successfully identified real economic themes—groups of companies in the same industry or exposed to the same forces consistently moved together through time, validating the approach's ability to detect persistent market structure without any predefined sector labels. More stocks added to be analyzed could reveal more themes or expose them more deeply.
 
-## Key Insights
+## Key Insights 
+
+from **extract_jaccard_clusters**
 
 1. **Sector Clustering Works:** The algorithm successfully identified real economic themes without any sector labels—stocks grouped purely by price movement patterns matched industry classifications.
 
@@ -39,3 +41,14 @@ These repeated groupings show that the clustering method successfully identified
 4. **Longer Windows = Fewer Clusters:** The 50-day window produced slightly fewer, more consolidated clusters than the 30-day window, filtering out short-term noise and revealing persistent structural relationships.
 
 5. **Market Cohesion:** Average cluster counts of 10-11 suggest the 100-stock universe naturally segments into roughly 10 distinct behavioral groups, providing a data-driven view of market structure beyond traditional sector classifications.
+
+From **temporal_clusters**
+
+ 1. There are ~18 overlapping cluster-pairs per day, which means the market structure is stable enough for themes to exist. 18 cluster overlap between days 
+ 2. The median edge weight is 2, meaning most clusters only share ~2 stocks day-to-day, so themes evolve gradually rather than staying rigid. 
+ 3. The max edge weight is 100, indicating a few very large clusters stay highly stable — likely major macro themes.
+ 4. Most clusters are tiny (size=2), showing the market forms many micro-clusters that aren’t meaningful themes.
+ 5. Large clusters (size 20–100) appear consistently, providing the backbone for long-term themes.
+ 6. The TGC is dense enough (8841 edges, 5222 nodes) to support longest-path extraction in Section 2.4.
+ 7. The date coverage (2023–2024) gives enough time horizon to detect multi-month and multi-quarter themes.
+
