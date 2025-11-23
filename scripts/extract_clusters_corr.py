@@ -133,7 +133,7 @@ def build_mst(corr_matrix):
     """
     corr_matrix = corr_matrix.fillna(0)
     
-    # Convert correlation to distance
+    # Convert correlation to distance using d_ij = sqrt(2 * (1 - corr_ij))
     dist_matrix = np.sqrt(2 * (1 - corr_matrix.clip(-1, 1)))
     dist_matrix = dist_matrix.fillna(2.0)
     np.fill_diagonal(dist_matrix.values, 0.0)
