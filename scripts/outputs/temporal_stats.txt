@@ -1,0 +1,30 @@
+=== TEMPORAL GRAPH SUMMARY (TGC Statistics) ===
+Total nodes (|V'|): 5222
+Total edges (|E|): 8841
+
+Cluster Size Statistics:
+count    5222.000000
+mean        9.594025
+std        15.052709
+min         2.000000
+25%         2.000000
+50%         2.000000
+75%        13.000000
+max       100.000000
+Name: cluster_size, dtype: float64
+
+Edge Weight Statistics:
+count    8841.000000
+mean        5.655469
+std        11.464595
+min         1.000000
+25%         1.000000
+50%         2.000000
+75%         2.000000
+max       100.000000
+Name: intersection_weight, dtype: float64
+
+Average edges per day-step: 17.68
+
+Date range: 2023-01-04 → 2024-12-31
+===============================================

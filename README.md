@@ -89,6 +89,9 @@ python scripts/show_mst_only.py
 # Step 3 Extract clusters for all trading days
 python scripts/extract_clusters_corr.py
 python scripts/extract_clusters_jaccard.py
+
+# Step 4: Analyze cluster persistence and transitions over time
+python scripts/temporal_clusters.py
 ```
 
 **What happens:**
@@ -120,6 +123,14 @@ python scripts/extract_clusters_jaccard.py
    - More robust than pairwise method, captures higher-order correlation patterns
    - Outputs daily cluster assignments to TXT files (~500 days per window)
    - Shows top 20 most frequent cluster groups with [size=X] indicators
+
+5. `scripts/temporal_clusters.py`:
+   - Implements Section 2.3 of the paper (Temporal Graph of Clusters)
+   - Takes the daily Jaccard-based clusters generated in Step 4 and builds a directed, weighted temporal graph showing how clusters evolve over time
+   - Loads `jaccard_clusters.pkl`, removes all singleton clusters so only meaningful multi-stock clusters remain (V′), and creates one node for each cluster on each date (with date, index, size, and member tickers)
+   - Connects clusters on consecutive days whenever they share at least one stock; each directed edge from day τᵢ to τᵢ₊₁ is weighted by the intersection size |Sᵢⱼ ∩ Sᵢ₊₁ₖ|, measuring cluster persistence
+   - Outputs: `temporal_nodes.csv` (all cluster nodes with metadata) and `temporal_edges.csv` (all edges with weights and shared elements), enabling downstream analysis of theme evolution and market structure stability
+
 
 ### Key Files Explained
 
@@ -168,6 +179,7 @@ After running the clustering scripts, a concise summary of the main results and 
 *Temporal Cluster Graph Outputs:*
 - `temporal_nodes.csv` - Nodes: each multi-stock cluster at a given time (window=50 by default)
 - `temporal_edges.csv` - Edges: directed, weighted by overlap between clusters on adjacent days
+- `temporal_stats.txt` - Summary statistics for the temporal graph: total clusters (nodes), total transitions (edges), cluster size distribution, edge weight (overlap) distribution, and average edges per day-step. Useful for quickly assessing the structure and persistence of themes over time.
 - These files enable downstream analysis of cluster evolution, persistence, and transitions over time
 
 ## Examples

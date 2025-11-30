@@ -190,3 +190,47 @@ print(f"\nDate range: {dates[0]} → {dates[-1]}")
 print("===============================================\n")
 
 print("\nDONE — This implements Section 2.3 + Part II exactly.\n")
+
+# ===============================================================
+# STATISTICS SUMMARY — PRINT + SAVE TO FILE
+# ===============================================================
+
+stats_lines = []
+stats_lines.append("=== TEMPORAL GRAPH SUMMARY (TGC Statistics) ===")
+
+num_nodes = len(df_nodes)
+num_edges = len(df_edges)
+
+stats_lines.append(f"Total nodes (|V'|): {num_nodes}")
+stats_lines.append(f"Total edges (|E|): {num_edges}\n")
+
+# Cluster stats
+stats_lines.append("Cluster Size Statistics:")
+stats_lines.append(str(df_nodes["cluster_size"].describe()) + "\n")
+
+# Edge stats
+stats_lines.append("Edge Weight Statistics:")
+if num_edges > 0:
+    stats_lines.append(str(df_edges["intersection_weight"].describe()) + "\n")
+else:
+    stats_lines.append("No edges created.\n")
+
+# Density / edges per step
+possible_edges = len(dates) - 1
+avg_edges_per_step = num_edges / possible_edges
+stats_lines.append(f"Average edges per day-step: {avg_edges_per_step:.2f}\n")
+
+# Date range
+stats_lines.append(f"Date range: {dates[0]} → {dates[-1]}")
+stats_lines.append("===============================================")
+
+# Print summary to console
+print("\n".join(stats_lines))
+print("\nDONE — This implements Section 2.3 + Part II exactly.\n")
+
+# Save stats to file
+stats_path = os.path.join(OUTPUT_DIR, "temporal_stats.txt")
+with open(stats_path, "w") as f:
+    f.write("\n".join(stats_lines))
+
+print(f"Saved stats to {stats_path}\n")
