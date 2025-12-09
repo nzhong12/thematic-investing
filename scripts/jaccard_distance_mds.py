@@ -27,6 +27,7 @@ returns = df_recent.pivot_table(
 returns = returns.sort_index()
 returns = returns.dropna(axis=1, how='any')
 
+# Choose window
 window = 30
 
 corr_matrices = []
@@ -38,6 +39,7 @@ for i in range(window - 1, len(returns)):
 
 rolling_corrs = pd.concat(corr_matrices, keys=dates)
 
+# Choose threshold for Jaccard Distance
 n = 500
 rolling_tstats = rolling_corrs.apply(lambda r: (r * np.sqrt(n - 2)) / np.sqrt(1 - r**2))
 
