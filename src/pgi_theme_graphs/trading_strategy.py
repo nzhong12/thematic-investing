@@ -79,13 +79,23 @@ class ClusterSignalGenerator:
         else:
             return pd.DataFrame(columns=['date', 'ticker', 'prev_cluster', 'cluster_id'])
     
-    def cluster_momentum_signal(self, date: pd.Timestamp) -> Dict[str, float]:
+    def cluster_momentum_signal(self, date: pd.Timestamp, 
+                                   min_cluster_size: int = 3,
+                                   max_cluster_size: int = 35) -> Dict[str, float]:
         """
         Strategy 1: Cluster Momentum
         
         Logic:
-        - Buy stocks that just entered large, persistent clusters (strong theme)
-        - Sell stocks that left large clusters or entered small clusters
+        - Buy stocks that just entered believable, persistent themes (3-35 stocks)
+        - Avoid mega-clusters (>35 stocks) - likely represents broad market regime
+        - Sell stocks that left persistent themes or entered noise clusters
+        
+        Parameters:
+        -----------
+        min_cluster_size : int
+            Minimum cluster size to consider (default: 3)
+        max_cluster_size : int
+            Maximum cluster size to consider (default: 35)
         
         Returns:
         --------
@@ -111,32 +121,47 @@ class ClusterSignalGenerator:
             new_persistence = self.cluster_persistence.get(new_cluster, 0)
             old_persistence = self.cluster_persistence.get(old_cluster, 0)
             new_size = self.cluster_avg_size.get(new_cluster, 0)
+            old_size = self.cluster_avg_size.get(old_cluster, 0)
             
-            # Strong buy: entering persistent, large cluster
-            if new_persistence > 30 and new_size > 10:  # Appeared >30 days, >10 stocks
+            # Filter: only trade believable themes (not mega-clusters, not tiny noise)
+            new_is_believable = min_cluster_size <= new_size <= max_cluster_size
+            old_is_believable = min_cluster_size <= old_size <= max_cluster_size
+            
+            # Strong buy: entering persistent, believable theme
+            if new_is_believable and new_persistence > 30 and new_size >= 8:
                 signals[ticker] = 1.0
             
-            # Weak buy: entering moderately persistent cluster
-            elif new_persistence > 15 and new_size > 5:
+            # Weak buy: entering moderately persistent, believable theme
+            elif new_is_believable and new_persistence > 15 and new_size >= 5:
                 signals[ticker] = 0.5
             
-            # Sell: leaving persistent cluster or entering small cluster
-            elif old_persistence > 20 and new_persistence < 10:
+            # Sell: leaving believable persistent cluster
+            elif old_is_believable and old_persistence > 20 and new_persistence < 10:
                 signals[ticker] = -1.0
             
-            # Weak sell: entering very small cluster (likely noise)
-            elif new_size <= 2:
+            # Weak sell: entering noise cluster or mega-cluster
+            elif new_size < min_cluster_size or new_size > max_cluster_size:
                 signals[ticker] = -0.5
         
         return signals
     
-    def cluster_mean_reversion_signal(self, date: pd.Timestamp) -> Dict[str, float]:
+    def cluster_mean_reversion_signal(self, date: pd.Timestamp,
+                                        min_cluster_size: int = 3,
+                                        max_cluster_size: int = 35) -> Dict[str, float]:
         """
         Strategy 2: Cluster Mean Reversion
         
         Logic:
-        - Within each cluster, identify stocks that diverged from cluster average
+        - Within each believable cluster (3-35 stocks), identify divergence
         - Buy underperformers, sell outperformers (mean reversion within theme)
+        - Skip mega-clusters (>35) - too broad for meaningful mean reversion
+        
+        Parameters:
+        -----------
+        min_cluster_size : int
+            Minimum cluster size to consider (default: 3)
+        max_cluster_size : int
+            Maximum cluster size to consider (default: 35)
         
         Returns:
         --------
@@ -163,8 +188,8 @@ class ClusterSignalGenerator:
                 clusters_today['cluster_id'] == cluster_id
             ]['ticker'].tolist()
             
-            # Need at least 3 stocks for meaningful mean reversion
-            if len(cluster_members) < 3:
+            # Filter: only trade believable themes
+            if len(cluster_members) < min_cluster_size or len(cluster_members) > max_cluster_size:
                 continue
             
             # Get available returns for cluster members
@@ -198,14 +223,24 @@ class ClusterSignalGenerator:
         
         return signals
     
-    def theme_rotation_signal(self, date: pd.Timestamp) -> Dict[str, float]:
+    def theme_rotation_signal(self, date: pd.Timestamp,
+                              min_cluster_size: int = 3,
+                              max_cluster_size: int = 35) -> Dict[str, float]:
         """
         Strategy 3: Theme Rotation
         
         Logic:
-        - Identify strengthening themes (cluster size increasing, persistence high)
-        - Identify weakening themes (cluster size decreasing, low persistence)
+        - Identify strengthening believable themes (3-35 stocks growing)
+        - Identify weakening believable themes (shrinking)
         - Rotate from weak to strong themes
+        - Ignore mega-clusters (>35) - too broad for theme-based trading
+        
+        Parameters:
+        -----------
+        min_cluster_size : int
+            Minimum cluster size to consider (default: 3)
+        max_cluster_size : int
+            Maximum cluster size to consider (default: 35)
         
         Returns:
         --------
@@ -232,12 +267,17 @@ class ClusterSignalGenerator:
         for cluster_id in clusters_today['cluster_id'].unique():
             trend = cluster_size_trend.get(cluster_id, 0)
             persistence = self.cluster_persistence.get(cluster_id, 0)
+            cluster_size = self.cluster_avg_size.get(cluster_id, 0)
             
             cluster_members = clusters_today[
                 clusters_today['cluster_id'] == cluster_id
             ]['ticker'].tolist()
             
-            # Strengthening theme: growing + persistent
+            # Filter: only trade believable themes
+            if cluster_size < min_cluster_size or cluster_size > max_cluster_size:
+                continue
+            
+            # Strengthening theme: growing + persistent + believable size
             if trend > 0.2 and persistence > 15:  # 20% growth, >15 days
                 for ticker in cluster_members:
                     signals[ticker] = 1.0
@@ -274,7 +314,9 @@ class ClusterSignalGenerator:
     
     def combine_signals(self, 
                        date: pd.Timestamp,
-                       weights: Optional[Dict[str, float]] = None) -> pd.DataFrame:
+                       weights: Optional[Dict[str, float]] = None,
+                       min_cluster_size: int = 3,
+                       max_cluster_size: int = 35) -> pd.DataFrame:
         """
         Combine multiple signals with custom weights.
         
@@ -284,6 +326,10 @@ class ClusterSignalGenerator:
             Date to generate signals for
         weights : Dict[str, float]
             Weights for each strategy: {'momentum': 0.4, 'mean_reversion': 0.3, 'rotation': 0.3}
+        min_cluster_size : int
+            Minimum cluster size to consider (default: 3)
+        max_cluster_size : int
+            Maximum cluster size to consider (default: 35)
         
         Returns:
         --------
@@ -292,10 +338,10 @@ class ClusterSignalGenerator:
         if weights is None:
             weights = {'momentum': 0.4, 'mean_reversion': 0.3, 'rotation': 0.3}
         
-        # Generate individual signals
-        momentum = self.cluster_momentum_signal(date)
-        mean_rev = self.cluster_mean_reversion_signal(date)
-        rotation = self.theme_rotation_signal(date)
+        # Generate individual signals with cluster size filters
+        momentum = self.cluster_momentum_signal(date, min_cluster_size, max_cluster_size)
+        mean_rev = self.cluster_mean_reversion_signal(date, min_cluster_size, max_cluster_size)
+        rotation = self.theme_rotation_signal(date, min_cluster_size, max_cluster_size)
         
         # Combine all tickers
         all_tickers = set(momentum.keys()) | set(mean_rev.keys()) | set(rotation.keys())

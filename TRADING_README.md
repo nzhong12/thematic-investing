@@ -158,8 +158,30 @@ Excess Return:       -111.67%
 
 **src/pgi_theme_graphs/trading_strategy.py**
 - `SimpleBacktester` class - Portfolio execution engine
+- `ClusterSignalGenerator` class - Cluster-based trading signals (momentum, mean reversion, rotation)
 - `execute_signals()` - Manages trades, cash, positions
 - `get_performance_stats()` - Returns, Sharpe, drawdown, trades
+
+### Backtest Scripts
+
+**scripts/test_multiple_strategies.py** - Discovery phase
+- Tests 11 variations (V2-V11) 
+- Discovered signal reversal breakthrough (V3: -2.95% vs V2: -59.61%)
+
+**scripts/optimize_reversed.py** - Optimization phase
+- Tests 12 reversed configurations (V12-V22)
+- Found V22: +6.31% return with 2 trades
+
+**scripts/final_optimization.py** - Final refinement
+- Tests 6 focused configs (V22-V27)
+- Best: V24 achieved +7.89% return (2 trades, 1.00 Sharpe)
+
+**scripts/maximize_earnings.py** - High-frequency optimization
+- Grid search across signal weights, thresholds, position limits
+- Constraint: minimum 10 trades per year
+- Goal: maximize absolute returns with more trading activity
+
+Each script builds on the previous: test → reverse → optimize → final.
 
 ### Running the Strategy
 
